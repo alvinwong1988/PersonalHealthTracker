@@ -1,3 +1,6 @@
+//import { FooterComponent } from "react-native-screens/lib/typescript/components/ScreenFooter";
+//import Footer from "../components/Footer";
+
 // theme.js
 export const theme = {
   // Colors
@@ -110,6 +113,34 @@ export const theme = {
       fontSize: 16,
       color: "#4285F4",
       fontWeight: "bold",
+    },
+  },
+  footer: {
+    footerContainer: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      backgroundColor: "#fff",
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: "#ddd",
+    },
+    iconContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 5,
+    },
+    activeIconContainer: {
+      backgroundColor: "rgba(0, 122, 255, 0.1)",
+      borderRadius: 20,
+    },
+    icon: {
+      width: 24,
+      height: 24,
+      tintColor: "#888",
+    },
+    activeIcon: {
+      tintColor: "#007AFF",
     },
   },
 };

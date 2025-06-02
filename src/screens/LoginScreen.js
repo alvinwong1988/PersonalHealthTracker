@@ -34,6 +34,11 @@ const LoginScreen = ({ route, navigation }) => {
     });
   };
 
+  // Dummy login function to navigate to HomeScreen
+  const handleDummyLogin = () => {
+    navigation.replace("Home", { language });
+  };
+
   const handleRegister = () => {
     navigation.navigate("Register", { language });
   };
@@ -123,6 +128,15 @@ const LoginScreen = ({ route, navigation }) => {
           {i18n && i18n.t
             ? i18n.t("dontHaveAccount")
             : "Don't have an account? Register"}
+        </Text>
+      </TouchableOpacity>
+      {/* Dummy Login Button */}
+      <TouchableOpacity
+        style={theme.components.button}
+        onPress={handleDummyLogin}
+      >
+        <Text style={theme.components.buttonText}>
+          {i18n && i18n.t ? i18n.t("Dummy login") : "Dummy Login"}
         </Text>
       </TouchableOpacity>
     </View>

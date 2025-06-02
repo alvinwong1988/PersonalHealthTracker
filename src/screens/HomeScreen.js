@@ -1,11 +1,18 @@
 import React from "react";
-import { theme } from "./src/styles/theme";
 import { View, Text } from "react-native";
+import { theme } from "../styles/theme";
+import Footer from "../components/Footer";
 
-const HomeScreen = () => {
+const HomeScreen = ({ route, navigation }) => {
+  const { language } = route.params || { language: "en" };
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Home Screen - Personal Health Tracker</Text>
+    <View style={{ flex: 1 }}>
+      <View style={theme.components.container}>
+        <Text style={theme.typography.title}>Welcome to Home Screen</Text>
+        <Text style={theme.typography.body}>Language: {language}</Text>
+      </View>
+      <Footer navigation={navigation} activeTab="Home" />
     </View>
   );
 };
