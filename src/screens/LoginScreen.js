@@ -35,8 +35,16 @@ const LoginScreen = ({ route, navigation }) => {
   };
 
   // Dummy login function to navigate to HomeScreen
-  const handleDummyLogin = () => {
-    navigation.replace("Home", { language });
+  const handleDummyLogin = async () => {
+    try {
+      // Simulate saving a user token (dummy login)
+      await AsyncStorage.setItem("userToken", "dummy-token");
+      console.log("Dummy login successful, navigating to Home");
+      // Navigate to HomeScreen with a language parameter if needed
+      navigation.replace("Home", { language: "en" });
+    } catch (error) {
+      console.error("Error during dummy login:", error);
+    }
   };
 
   const handleRegister = () => {

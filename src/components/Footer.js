@@ -6,27 +6,27 @@ const Footer = ({ navigation, activeTab = "Home" }) => {
   const icons = [
     {
       name: "Home",
-      icon: "https://img.icons8.com/material-outlined/24/000000/home.png",
+      icon: require("../../assets/icons/home.png"), // Adjust path based on Footer.js location
       screen: "Home",
     },
     {
       name: "Search",
-      icon: "https://img.icons8.com/material-outlined/24/000000/search.png",
+      icon: require("../../assets/icons/search.png"),
       screen: "Search",
     },
     {
       name: "Add",
-      icon: "https://img.icons8.com/material-outlined/24/000000/plus.png",
+      icon: require("../../assets/icons/plus.png"),
       screen: "Measurement",
     },
     {
       name: "Notifications",
-      icon: "https://img.icons8.com/material-outlined/24/000000/appointment-reminders.png",
+      icon: require("../../assets/icons/notifications.png"),
       screen: "Notifications",
     },
     {
       name: "Profile",
-      icon: "https://img.icons8.com/material-outlined/24/000000/user.png",
+      icon: require("../../assets/icons/user.png"),
       screen: "Profile",
     },
   ];
@@ -43,7 +43,7 @@ const Footer = ({ navigation, activeTab = "Home" }) => {
           onPress={() => navigation.navigate(item.screen)}
         >
           <Image
-            source={{ uri: item.icon }}
+            source={item.icon}
             style={[
               theme.footer.icon,
               activeTab === item.name && theme.footer.activeIcon,

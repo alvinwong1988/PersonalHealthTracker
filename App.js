@@ -7,29 +7,14 @@ import i18n from "i18n-js";
 import LanguageSelectionScreen from "./src/screens/LanguageSelectionScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import RegistrationScreen from "./src/screens/RegistrationScreen";
+import HomeScreen from "./src/screens/HomeScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import MeasurementScreen from "./src/screens/MeasurementScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Import translations
 import en from "./translations/en.json";
 import cn from "./translations/cn.json";
-
-// Placeholder Home screen
-const HomeScreen = ({ route }) => {
-  const { language } = route.params || { language: "en" };
-  if (i18n) {
-    i18n.locale = language;
-  }
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ fontSize: 24 }}>
-        {i18n && i18n.t
-          ? i18n.t("welcome")
-          : "Welcome (translation unavailable)"}
-      </Text>
-      <Text style={{ fontSize: 18 }}>Language: {language}</Text>
-    </View>
-  );
-};
 
 const Stack = createStackNavigator();
 
@@ -40,7 +25,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize i18n after a short delay to ensure module is loaded
     const initI18n = () => {
       if (i18n) {
         i18n.translations = { en, cn };
@@ -57,7 +41,6 @@ export default function App() {
   useEffect(() => {
     const loadLanguageAndLoginStatus = async () => {
       try {
-        // Load saved language
         const savedLanguage = await AsyncStorage.getItem("selectedLanguage");
         if (savedLanguage) {
           setInitialLanguage(savedLanguage);
@@ -66,14 +49,13 @@ export default function App() {
           setInitialLanguage(deviceLocale === "zh" ? "cn" : "en");
         }
 
-        // Check login status (mock for now, replace with actual auth check)
         const loginToken = await AsyncStorage.getItem("userToken");
-        setIsLoggedIn(!!loginToken); // Set to true if token exists
+        setIsLoggedIn(!!loginToken);
       } catch (error) {
         console.error("Error loading language or login status:", error);
         setIsLoggedIn(false);
       } finally {
-        setLoading(false); // Done loading
+        setLoading(false);
       }
     };
     loadLanguageAndLoginStatus();
@@ -91,18 +73,17 @@ export default function App() {
     );
   }
 
+  // Set initial route based on login status
+  const initialRoute = isLoggedIn ? "Home" : "LanguageSelection";
+
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="LanguageSelection"
+        initialRouteName={initialRoute}
         screenOptions={{
-          headerStyle: {
-            backgroundColor: "#4CAF50", // Green color for the top bar
-          },
-          headerTintColor: "#FFFFFF", // White text color for header title and back button
-          headerTitleStyle: {
-            fontWeight: "bold", // Optional: Make the title bold
-          },
+          headerStyle: { backgroundColor: "#4CAF50" },
+          headerTintColor: "#FFFFFF",
+          headerTitleStyle: { fontWeight: "bold" },
         }}
       >
         <Stack.Screen
@@ -134,6 +115,16 @@ export default function App() {
           name="Home"
           component={HomeScreen}
           options={{ title: "Home" }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: "Profile" }}
+        />
+        <Stack.Screen
+          name="Measurement"
+          component={MeasurementScreen}
+          options={{ title: "Measurement" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

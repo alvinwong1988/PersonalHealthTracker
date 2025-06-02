@@ -124,6 +124,8 @@ export const theme = {
       paddingVertical: 10,
       borderTopWidth: 1,
       borderTopColor: "#ddd",
+      //backgroundColor: "yellow",
+      //minHeight: 80,
     },
     iconContainer: {
       alignItems: "center",
