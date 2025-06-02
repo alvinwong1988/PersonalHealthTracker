@@ -1,4 +1,9 @@
 {
   "welcome": "Welcome to Personal Health Tracker",
-  "selectLanguage": "Select Your Language"
+  "selectLanguage": "Select Your Language",
+  "login": "Login",
+  "username": "Username",
+  "password": "Password",
+  "loginWithGoogle": "Login with Google",
+  "or": "OR"
 }

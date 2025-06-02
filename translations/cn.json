@@ -1,4 +1,9 @@
 {
   "welcome": "欢迎使用个人健康追踪器",
-  "selectLanguage": "选择您的语言"
+  "selectLanguage": "选择您的语言",
+  "login": "登录",
+  "username": "用户名",
+  "password": "密码",
+  "loginWithGoogle": "使用 Google 登录",
+  "or": "或"
 }

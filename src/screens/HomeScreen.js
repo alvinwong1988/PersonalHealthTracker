@@ -1,4 +1,5 @@
 import React from "react";
+import { theme } from "./src/styles/theme";
 import { View, Text } from "react-native";
 
 const HomeScreen = () => {

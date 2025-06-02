@@ -5,6 +5,8 @@ import { View, Text } from "react-native";
 import * as Localization from "expo-localization";
 import i18n from "i18n-js";
 import LanguageSelectionScreen from "./src/screens/LanguageSelectionScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import RegistrationScreen from "./src/screens/RegistrationScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Import translations
@@ -34,6 +36,8 @@ const Stack = createStackNavigator();
 export default function App() {
   const [initialLanguage, setInitialLanguage] = useState("en");
   const [i18nReady, setI18nReady] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Initialize i18n after a short delay to ensure module is loaded
@@ -51,8 +55,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const loadLanguage = async () => {
+    const loadLanguageAndLoginStatus = async () => {
       try {
+        // Load saved language
         const savedLanguage = await AsyncStorage.getItem("selectedLanguage");
         if (savedLanguage) {
           setInitialLanguage(savedLanguage);
@@ -60,20 +65,46 @@ export default function App() {
           const deviceLocale = Localization.getLocales()[0].languageCode;
           setInitialLanguage(deviceLocale === "zh" ? "cn" : "en");
         }
+
+        // Check login status (mock for now, replace with actual auth check)
+        const loginToken = await AsyncStorage.getItem("userToken");
+        setIsLoggedIn(!!loginToken); // Set to true if token exists
       } catch (error) {
-        console.error("Error loading language:", error);
+        console.error("Error loading language or login status:", error);
+        setIsLoggedIn(false);
+      } finally {
+        setLoading(false); // Done loading
       }
     };
-    loadLanguage();
+    loadLanguageAndLoginStatus();
   }, []);
 
   if (i18nReady && i18n) {
     i18n.locale = initialLanguage;
   }
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="LanguageSelection">
+      <Stack.Navigator
+        initialRouteName="LanguageSelection"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#4CAF50", // Green color for the top bar
+          },
+          headerTintColor: "#FFFFFF", // White text color for header title and back button
+          headerTitleStyle: {
+            fontWeight: "bold", // Optional: Make the title bold
+          },
+        }}
+      >
         <Stack.Screen
           name="LanguageSelection"
           component={LanguageSelectionScreen}
@@ -82,6 +113,21 @@ export default function App() {
               i18nReady && i18n && i18n.t
                 ? i18n.t("selectLanguage")
                 : "Select Language",
+          }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{
+            title: i18nReady && i18n && i18n.t ? i18n.t("login") : "Login",
+          }}
+        />
+        <Stack.Screen
+          name="Register"
+          component={RegistrationScreen}
+          options={{
+            title:
+              i18nReady && i18n && i18n.t ? i18n.t("register") : "Register",
           }}
         />
         <Stack.Screen
