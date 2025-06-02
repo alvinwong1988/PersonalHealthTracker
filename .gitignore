@@ -1,1 +1,17 @@
-node_modules
+# Ignore node_modules folder (common in Node.js projects)
+node_modules/
+
+# Ignore build output directories
+dist/
+build/
+
+# Ignore environment files with sensitive data
+.env
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+
+# Ignore operating system files
+.DS_Store
+Thumbs.db
