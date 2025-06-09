@@ -20,9 +20,9 @@ const Footer = ({ navigation, activeTab = "Home" }) => {
       screen: "Measurement",
     },
     {
-      name: "Notifications",
+      name: "Notification",
       icon: require("../../assets/icons/notifications.png"),
-      screen: "Notifications",
+      screen: "Notification",
     },
     {
       name: "Profile",

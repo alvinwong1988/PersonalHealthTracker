@@ -10,6 +10,12 @@ import RegistrationScreen from "./src/screens/RegistrationScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import MeasurementScreen from "./src/screens/MeasurementScreen";
+import SearchScreen from "./src/screens/SearchScreen";
+import NotificationScreen from "./src/screens/NotificationScreen";
+import TermsOfServiceScreen from "./src/screens/TermsOfServiceScreen";
+import PrivacyPolicyScreen from "./src/screens/PrivacyPolicyScreen";
+import PersonalInformationScreen from "./src/screens/PersonalInformationScreen";
+import SecurityScreen from "./src/screens/SecurityScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Import translations
@@ -29,6 +35,9 @@ export default function App() {
       if (i18n) {
         i18n.translations = { en, cn };
         i18n.fallbacks = true;
+        i18n.defaultLocale = "en";
+
+        console.log("i18n initialized successfully");
         setI18nReady(true);
       } else {
         console.error("i18n-js is not loaded properly.");
@@ -74,7 +83,8 @@ export default function App() {
   }
 
   // Set initial route based on login status
-  const initialRoute = isLoggedIn ? "Home" : "LanguageSelection";
+  //const initialRoute = isLoggedIn ? "Home" : "LanguageSelection";
+  const initialRoute = isLoggedIn ? "LanguageSelection" : "LanguageSelection";
 
   return (
     <NavigationContainer>
@@ -84,6 +94,7 @@ export default function App() {
           headerStyle: { backgroundColor: "#4CAF50" },
           headerTintColor: "#FFFFFF",
           headerTitleStyle: { fontWeight: "bold" },
+          animationEnabled: false,
         }}
       >
         <Stack.Screen
@@ -114,17 +125,67 @@ export default function App() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: "Home" }}
-        />
-        <Stack.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ title: "Profile" }}
+          options={{
+            title: "Home",
+            headerLeft: () => null,
+            animationEnabled: false,
+          }}
         />
         <Stack.Screen
           name="Measurement"
           component={MeasurementScreen}
-          options={{ title: "Measurement" }}
+          options={{
+            title: "Measurement",
+            headerLeft: () => null,
+            animationEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            title: "Profile",
+            headerLeft: () => null,
+            animationEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="Notification"
+          component={NotificationScreen}
+          options={{
+            title: "Notification",
+            headerLeft: () => null,
+            animationEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{
+            title: "Search",
+            headerLeft: () => null,
+            animationEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="Terms"
+          component={TermsOfServiceScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Privacy"
+          component={PrivacyPolicyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PersonalInfo"
+          component={PersonalInformationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Security"
+          component={SecurityScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>
