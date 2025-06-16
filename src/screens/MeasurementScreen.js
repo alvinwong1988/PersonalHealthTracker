@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
-import { Camera } from "expo-camera";
+// Updated imports for expo-camera v16+ (SDK 52)
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
@@ -20,10 +21,10 @@ import Footer from "../components/Footer";
 const { width, height } = Dimensions.get("window");
 
 const MeasurementScreen = ({ navigation }) => {
-  // Camera and permissions
-  const [hasPermission, setHasPermission] = useState(null);
-  const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
-  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
+  // Camera and permissions with string values instead of constants
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraType, setCameraType] = useState("back"); // Use string instead of CameraType.back
+  const [flashMode, setFlashMode] = useState("off"); // Use string instead of FlashMode.off
   const cameraRef = useRef(null);
 
   // AI Analysis states
@@ -50,11 +51,14 @@ const MeasurementScreen = ({ navigation }) => {
   const [showManualEntry, setShowManualEntry] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
-    })();
-  }, []);
+    if (!permission) {
+      return; // Still loading permissions
+    }
+
+    if (!permission.granted) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   // Mock AI food recognition function
   const analyzeFoodImage = async (imageUri) => {
@@ -188,20 +192,13 @@ const MeasurementScreen = ({ navigation }) => {
     }
   };
 
+  // Updated toggle functions with string values
   const toggleFlash = () => {
-    setFlashMode(
-      flashMode === Camera.Constants.FlashMode.off
-        ? Camera.Constants.FlashMode.on
-        : Camera.Constants.FlashMode.off
-    );
+    setFlashMode(flashMode === "off" ? "on" : "off");
   };
 
   const flipCamera = () => {
-    setCameraType(
-      cameraType === Camera.Constants.Type.back
-        ? Camera.Constants.Type.front
-        : Camera.Constants.Type.back
-    );
+    setCameraType(cameraType === "back" ? "front" : "back");
   };
 
   // Camera Controls Component
@@ -221,7 +218,7 @@ const MeasurementScreen = ({ navigation }) => {
           onPress={toggleFlash}
         >
           <Text style={theme.measurement.controlIcon}>
-            {flashMode === Camera.Constants.FlashMode.off ? "⚡" : "🔦"}
+            {flashMode === "off" ? "⚡" : "🔦"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -448,23 +445,31 @@ const MeasurementScreen = ({ navigation }) => {
     </Modal>
   );
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={theme.measurement.permissionContainer}>
         <Text style={theme.measurement.permissionText}>
-          Requesting camera permission...
+          Loading camera permissions...
         </Text>
       </View>
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={theme.measurement.permissionContainer}>
         <Text style={theme.measurement.permissionTitle}>No Camera Access</Text>
         <Text style={theme.measurement.permissionText}>
-          Please enable camera permission in settings to use food scanning
+          Please enable camera permission to use food scanning
         </Text>
+        <TouchableOpacity
+          style={theme.measurement.permissionButton}
+          onPress={requestPermission}
+        >
+          <Text style={theme.measurement.permissionButtonText}>
+            Grant Permission
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={theme.measurement.permissionButton}
           onPress={() => navigation.navigate("Nutrition")}
@@ -479,15 +484,15 @@ const MeasurementScreen = ({ navigation }) => {
 
   return (
     <View style={theme.measurement.container}>
-      <Camera
+      <CameraView
         ref={cameraRef}
         style={theme.measurement.camera}
-        type={cameraType}
-        flashMode={flashMode}
+        facing={cameraType}
+        flash={flashMode}
         onCameraReady={() => setIsCameraReady(true)}
       >
         <CameraControls />
-      </Camera>
+      </CameraView>
 
       <Footer navigation={navigation} activeTab="Add" />
 
