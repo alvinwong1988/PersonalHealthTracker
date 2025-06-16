@@ -1673,6 +1673,328 @@ export const theme = {
       textAlign: "center",
     },
   },
+  // SearchPage component styles
+  searchPage: {
+    container: {
+      flex: 1,
+    },
+    header: {
+      padding: 16,
+      paddingBottom: 8,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: "bold",
+      marginBottom: 16,
+    },
+    searchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    searchInput: {
+      flex: 1,
+      height: 50,
+      borderWidth: 1,
+      borderRadius: 25,
+      paddingHorizontal: 20,
+      fontSize: 16,
+    },
+    searchButton: {
+      marginLeft: 10,
+      borderRadius: 25,
+      paddingHorizontal: 20,
+      height: 50,
+      justifyContent: "center",
+      alignItems: "center",
+      minWidth: 80,
+    },
+    searchButtonText: {
+      color: "#fff",
+      fontWeight: "bold",
+      fontSize: 16,
+    },
+    mapContainer: {
+      flex: 1,
+      position: "relative",
+    },
+    map: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+    },
+    infoCard: {
+      position: "absolute",
+      bottom: 20,
+      left: 16,
+      right: 16,
+      borderRadius: 12,
+      padding: 16,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    infoHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    restaurantName: {
+      fontSize: 18,
+      fontWeight: "bold",
+      flex: 1,
+    },
+    closeButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: "#f0f0f0",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    closeButtonText: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: "#666",
+    },
+    restaurantInfo: {
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    infoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    rating: {
+      fontSize: 14,
+      fontWeight: "bold",
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    statusText: {
+      color: "#fff",
+      fontSize: 12,
+      fontWeight: "bold",
+    },
+    detailsButton: {
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    detailsButtonText: {
+      color: "#fff",
+      fontWeight: "bold",
+      fontSize: 16,
+    },
+    // Additional search page specific styles
+    filterContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: "#fff",
+    },
+    filterButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "#ddd",
+      marginRight: 8,
+    },
+    activeFilterButton: {
+      backgroundColor: "#007AFF",
+      borderColor: "#007AFF",
+    },
+    filterButtonText: {
+      fontSize: 14,
+      color: "#666",
+    },
+    activeFilterButtonText: {
+      color: "#fff",
+    },
+    // Location permission styles
+    permissionContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 40,
+    },
+    permissionIcon: {
+      fontSize: 64,
+      marginBottom: 20,
+      color: "#007AFF",
+    },
+    permissionTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: "#333",
+      marginBottom: 10,
+      textAlign: "center",
+    },
+    permissionText: {
+      fontSize: 16,
+      color: "#666",
+      textAlign: "center",
+      marginBottom: 20,
+      lineHeight: 24,
+    },
+    permissionButton: {
+      backgroundColor: "#007AFF",
+      paddingHorizontal: 30,
+      paddingVertical: 15,
+      borderRadius: 25,
+    },
+    permissionButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    // Error states
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 40,
+    },
+    errorIcon: {
+      fontSize: 64,
+      marginBottom: 20,
+      color: "#ff4444",
+    },
+    errorTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: "#333",
+      marginBottom: 10,
+      textAlign: "center",
+    },
+    errorText: {
+      fontSize: 14,
+      color: "#666",
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    retryButton: {
+      backgroundColor: "#007AFF",
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    restaurantCard: {
+      borderRadius: 12,
+      padding: 15,
+      marginBottom: 15,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    restaurantHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 8,
+    },
+    restaurantName: {
+      fontSize: 18,
+      fontWeight: "bold",
+      flex: 1,
+      marginRight: 10,
+    },
+    ratingContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    ratingText: {
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    restaurantAddress: {
+      fontSize: 14,
+      marginBottom: 10,
+      lineHeight: 20,
+    },
+    restaurantInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      marginBottom: 10,
+    },
+    distanceText: {
+      fontSize: 12,
+      marginRight: 15,
+    },
+    priceText: {
+      fontSize: 12,
+      marginRight: 15,
+    },
+    priceLevel: {
+      fontSize: 12,
+      marginRight: 15,
+    },
+    cuisineTypes: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    cuisineTag: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginRight: 8,
+      marginBottom: 4,
+    },
+    cuisineTagText: {
+      fontSize: 10,
+      fontWeight: "500",
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 50,
+    },
+    emptyIcon: {
+      fontSize: 48,
+      marginBottom: 15,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 8,
+    },
+    emptyText: {
+      fontSize: 14,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    resultsText: {
+      fontSize: 14,
+      textAlign: "center",
+    },
+  },
 };
 
 export default theme;

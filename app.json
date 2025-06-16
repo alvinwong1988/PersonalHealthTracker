@@ -9,7 +9,39 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ]
+    },
     "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to find nearby restaurants.",
+          "locationAlwaysPermission": "Allow $(PRODUCT_NAME) to use your location to find nearby restaurants.",
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to find nearby restaurants."
+        }
+      ],
+      [
+        "expo-maps",
+        {
+          "googleMapsApiKey": "--"
+        }
+      ],
       "expo-localization",
       [
         "expo-camera",
@@ -22,7 +54,8 @@
         {
           "photosPermission": "The app accesses your photos to analyze food nutrition."
         }
-      ]
+      ],
+      "expo-maps"
     ]
   }
 }
