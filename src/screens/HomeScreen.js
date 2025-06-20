@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,13 @@ import {
   TouchableOpacity,
   Dimensions,
   RefreshControl,
+  Alert,
+  Platform,
+  AppState,
+  Linking,
 } from "react-native";
+import { Pedometer } from "expo-sensors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
 
@@ -19,72 +25,461 @@ const HomeScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [healthData, setHealthData] = useState({
-    steps: 7234,
+    steps: 0,
     stepsGoal: 10000,
-    calories: 1850,
+    calories: 0,
     caloriesGoal: 2200,
-    water: 6,
+    water: 0,
     waterGoal: 8,
-    sleep: 7.5,
+    sleep: 0,
     sleepGoal: 8,
-    workoutsThisWeek: 4,
+    workoutsThisWeek: 0,
     workoutGoal: 5,
   });
 
-  const [todayTasks, setTodayTasks] = useState([
-    {
-      id: 1,
-      type: "workout",
-      title: "Morning Cardio",
-      time: "8:00 AM",
-      completed: true,
-    },
-    {
-      id: 2,
-      type: "meal",
-      title: "Log Breakfast",
-      time: "9:00 AM",
-      completed: true,
-    },
-    {
-      id: 3,
-      type: "water",
-      title: "Drink Water",
-      time: "10:00 AM",
-      completed: false,
-    },
-    {
-      id: 4,
-      type: "meal",
-      title: "Log Lunch",
-      time: "1:00 PM",
-      completed: false,
-    },
-    {
-      id: 5,
-      type: "workout",
-      title: "Evening Yoga",
-      time: "6:00 PM",
-      completed: false,
-    },
-  ]);
+  const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
+  const [currentStepCount, setCurrentStepCount] = useState(0);
+  const [androidBaseSteps, setAndroidBaseSteps] = useState(0);
+  const [androidSessionSteps, setAndroidSessionSteps] = useState(0);
+  const [lastSavedSteps, setLastSavedSteps] = useState(0);
 
+  // Use refs for subscription management
+  const pedometerSubscription = useRef(null);
+  const appStateSubscription = useRef(null);
+  const dateCheckInterval = useRef(null);
+  const saveInterval = useRef(null);
+
+  // Initialize app
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000); // Update every minute
+    initializeApp();
 
-    return () => clearInterval(timer);
+    // Cleanup function
+    return () => {
+      //cleanup();
+    };
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    // appStateSubscription.current = AppState.addEventListener(
+    //   "change",
+    //   handleAppStateChange
+    // );
+
+    return () => {
+      // if (appStateSubscription.current) {
+      //   appStateSubscription.current.remove();
+      // }
+    };
+  }, []);
+  //androidSessionSteps, androidBaseSteps
+  const initializeApp = async () => {
+    try {
+      // Check and reset if new day
+      await checkAndResetIfNewDay();
+
+      // Initialize pedometer
+      await initializePedometer();
+
+      // Set up intervals
+      setupIntervals();
+    } catch (error) {
+      console.error("App initialization error:", error);
+    }
   };
 
+  const setupIntervals = () => {
+    // Update date every minute
+    dateCheckInterval.current = setInterval(() => {
+      setCurrentDate(new Date());
+      checkAndResetIfNewDay();
+    }, 60000);
+
+    // Auto-save steps every 30 seconds for Android
+    if (Platform.OS === "android") {
+      saveInterval.current = setInterval(() => {
+        saveCurrentSteps();
+      }, 30000);
+    }
+  };
+
+  const cleanup = () => {
+    // Remove pedometer subscription
+    if (pedometerSubscription.current) {
+      pedometerSubscription.current.remove();
+      pedometerSubscription.current = null;
+    }
+
+    // Clear intervals
+    if (dateCheckInterval.current) {
+      clearInterval(dateCheckInterval.current);
+    }
+    if (saveInterval.current) {
+      clearInterval(saveInterval.current);
+    }
+
+    // Save current steps before cleanup
+    if (Platform.OS === "android") {
+      saveCurrentSteps();
+    }
+  };
+
+  const handleAppStateChange = (nextAppState) => {
+    if (nextAppState === "background" || nextAppState === "inactive") {
+      // App going to background - save current steps
+      if (Platform.OS === "android") {
+        saveCurrentSteps();
+      }
+    } else if (nextAppState === "active") {
+      // App coming to foreground - reinitialize
+      reinitializePedometer();
+    }
+  };
+
+  const checkAndResetIfNewDay = async () => {
+    try {
+      const storedDate = await AsyncStorage.getItem("stepsDate");
+      const today = new Date().toDateString();
+
+      if (storedDate !== today) {
+        // New day - reset everything
+        await AsyncStorage.multiSet([
+          ["todaySteps", "0"],
+          ["stepsDate", today],
+          ["androidBaseSteps", "0"],
+        ]);
+
+        setHealthData((prev) => ({
+          ...prev,
+          steps: 0,
+          calories: 0,
+          water: 0,
+          sleep: 0,
+        }));
+
+        setAndroidBaseSteps(0);
+        setAndroidSessionSteps(0);
+        setLastSavedSteps(0);
+
+        console.log("New day detected - reset all data");
+      }
+    } catch (error) {
+      console.error("Error checking date:", error);
+    }
+  };
+
+  const initializePedometer = async () => {
+    try {
+      const isAvailable = await Pedometer.isAvailableAsync();
+      setIsPedometerAvailable(isAvailable);
+
+      if (!isAvailable) {
+        Alert.alert(
+          "Step Counter Unavailable",
+          "Step counting is not available on this device. You can still manually log your activities."
+        );
+        return;
+      }
+
+      // Step 1: Check current permission status
+      let permissionResponse = await Pedometer.getPermissionsAsync();
+      let status = permissionResponse.status;
+      console.log("Pedometer permission status:", status);
+      // Step 2: Only request if not already granted
+      if (status !== "granted") {
+        permissionResponse = await Pedometer.requestPermissionsAsync();
+        status = permissionResponse.status;
+      }
+
+      // Step 3: If still not granted, show alert only once per session
+      if (status !== "granted") {
+        if (!global.__motionPermissionAlertShown) {
+          global.__motionPermissionAlertShown = true;
+          Alert.alert(
+            "Permission Required",
+            "Please grant motion/physical activity permission in your device settings to track steps.",
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+              },
+              Platform.OS === "android"
+                ? {
+                    text: "Open Settings",
+                    onPress: () => {
+                      // Opens the app settings page
+                      Linking.openSettings();
+                    },
+                  }
+                : {
+                    text: "OK",
+                  },
+            ]
+          );
+        }
+        return;
+      }
+
+      // Step 4: Continue normal initialization
+      if (Platform.OS === "ios") {
+        await fetchTodaysStepsIOS();
+      } else {
+        await initializeAndroidStepTracking();
+      }
+      subscribeToPedometerUpdates();
+    } catch (error) {
+      console.error("Pedometer initialization failed:", error);
+      Alert.alert(
+        "Initialization Error",
+        "Failed to initialize step counter. Please try again."
+      );
+    }
+  };
+
+  const reinitializePedometer = async () => {
+    // Remove existing subscription
+    if (pedometerSubscription.current) {
+      pedometerSubscription.current.remove();
+      pedometerSubscription.current = null;
+    }
+
+    // Reinitialize
+    await initializePedometer();
+  };
+
+  const fetchTodaysStepsIOS = async () => {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+
+      const result = await Pedometer.getStepCountAsync(startOfDay, today);
+      if (result) {
+        const steps = result.steps || 0;
+        setHealthData((prev) => ({
+          ...prev,
+          steps: steps,
+          calories: Math.round(steps * 0.04),
+        }));
+
+        // Store for persistence
+        await AsyncStorage.setItem("todaySteps", steps.toString());
+        setLastSavedSteps(steps);
+      }
+    } catch (error) {
+      console.error("Error fetching iOS step count:", error);
+      // Fallback to stored value
+      await loadStoredSteps();
+    }
+  };
+
+  const initializeAndroidStepTracking = async () => {
+    try {
+      const [[, storedSteps], [, storedDate], [, baseSteps]] =
+        await AsyncStorage.multiGet([
+          "todaySteps",
+          "stepsDate",
+          "androidBaseSteps",
+        ]);
+
+      const today = new Date().toDateString();
+
+      if (storedDate === today && storedSteps) {
+        const steps = parseInt(storedSteps) || 0;
+        const base = parseInt(baseSteps) || 0;
+
+        setAndroidBaseSteps(base);
+        setLastSavedSteps(steps);
+        setHealthData((prev) => ({
+          ...prev,
+          steps: steps,
+          calories: Math.round(steps * 0.04),
+        }));
+      } else {
+        // New day
+        await checkAndResetIfNewDay();
+      }
+    } catch (error) {
+      console.error("Error initializing Android step tracking:", error);
+    }
+  };
+
+  const loadStoredSteps = async () => {
+    try {
+      const [[, storedSteps], [, storedDate]] = await AsyncStorage.multiGet([
+        "todaySteps",
+        "stepsDate",
+      ]);
+
+      const today = new Date().toDateString();
+
+      if (storedDate === today && storedSteps) {
+        const steps = parseInt(storedSteps) || 0;
+        setHealthData((prev) => ({
+          ...prev,
+          steps: steps,
+          calories: Math.round(steps * 0.04),
+        }));
+        setLastSavedSteps(steps);
+      }
+    } catch (error) {
+      console.error("Error loading stored steps:", error);
+    }
+  };
+
+  const subscribeToPedometerUpdates = () => {
+    try {
+      // Remove existing subscription if any
+      if (pedometerSubscription.current) {
+        pedometerSubscription.current.remove();
+      }
+
+      console.log("Subscribing to Pedometer updates...");
+
+      pedometerSubscription.current = Pedometer.watchStepCount(
+        (result) => {
+          console.log("Step count update:", result.steps);
+
+          if (Platform.OS === "android") {
+            handleAndroidStepUpdate(result.steps);
+          } else {
+            handleIOSStepUpdate(result.steps);
+          }
+        },
+        (error) => {
+          console.error("Pedometer error:", error);
+          // Don't show alert for every error, just log it
+        }
+      );
+
+      console.log("Successfully subscribed to pedometer updates");
+    } catch (error) {
+      console.error("Failed to subscribe to pedometer:", error);
+    }
+  };
+
+  const handleIOSStepUpdate = async (steps) => {
+    try {
+      setCurrentStepCount(steps);
+
+      // For iOS, the steps are cumulative for the day
+      setHealthData((prev) => ({
+        ...prev,
+        steps: steps,
+        calories: Math.round(steps * 0.04),
+      }));
+
+      // Save periodically (every 100 steps)
+      if (steps - lastSavedSteps >= 100) {
+        await AsyncStorage.setItem("todaySteps", steps.toString());
+        setLastSavedSteps(steps);
+      }
+    } catch (error) {
+      console.error("Error handling iOS step update:", error);
+    }
+  };
+
+  const handleAndroidStepUpdate = async (sessionSteps) => {
+    try {
+      setAndroidSessionSteps(sessionSteps);
+
+      // Calculate total steps
+      const totalSteps = androidBaseSteps + sessionSteps;
+
+      setHealthData((prev) => ({
+        ...prev,
+        steps: totalSteps,
+        calories: Math.round(totalSteps * 0.04),
+      }));
+
+      // Auto-save every 50 steps
+      if (totalSteps - lastSavedSteps >= 50) {
+        await saveCurrentSteps();
+      }
+    } catch (error) {
+      console.error("Error handling Android step update:", error);
+    }
+  };
+
+  const saveCurrentSteps = async () => {
+    if (Platform.OS === "android") {
+      try {
+        const totalSteps = androidBaseSteps + androidSessionSteps;
+
+        await AsyncStorage.multiSet([
+          ["todaySteps", totalSteps.toString()],
+          ["androidBaseSteps", totalSteps.toString()],
+          ["stepsDate", new Date().toDateString()],
+        ]);
+
+        setLastSavedSteps(totalSteps);
+        setAndroidBaseSteps(totalSteps);
+        setAndroidSessionSteps(0);
+
+        console.log(`Saved ${totalSteps} steps`);
+      } catch (error) {
+        console.error("Error saving steps:", error);
+      }
+    }
+  };
+
+  const addManualSteps = async (additionalSteps) => {
+    try {
+      const currentSteps = healthData.steps;
+      const newTotal = currentSteps + additionalSteps;
+
+      setHealthData((prev) => ({
+        ...prev,
+        steps: newTotal,
+        calories: Math.round(newTotal * 0.04),
+      }));
+
+      if (Platform.OS === "android") {
+        setAndroidBaseSteps(newTotal);
+        setAndroidSessionSteps(0);
+      }
+
+      await AsyncStorage.multiSet([
+        ["todaySteps", newTotal.toString()],
+        ["androidBaseSteps", newTotal.toString()],
+        ["stepsDate", new Date().toDateString()],
+      ]);
+
+      Alert.alert(
+        "Steps Added",
+        `Successfully added ${additionalSteps} steps to your total!`
+      );
+    } catch (error) {
+      console.error("Error adding manual steps:", error);
+      Alert.alert("Error", "Failed to add steps. Please try again.");
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+
+    try {
+      await checkAndResetIfNewDay();
+
+      if (isPedometerAvailable) {
+        if (Platform.OS === "ios") {
+          await fetchTodaysStepsIOS();
+        } else {
+          await saveCurrentSteps();
+          await loadStoredSteps();
+        }
+      }
+    } catch (error) {
+      console.error("Refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // UI Helper Functions
   const getGreeting = () => {
     const hour = currentDate.getHours();
     if (hour < 12) return "Good Morning";
@@ -105,47 +500,27 @@ const HomeScreen = ({ route, navigation }) => {
     return Math.min((current / goal) * 100, 100);
   };
 
-  const toggleTask = (taskId) => {
-    setTodayTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
-
-  // Header Component
+  // Component UI remains the same...
   const Header = () => (
     <View style={theme.home.header}>
-      <View style={theme.home.headerTop}>
-        <View>
-          <Text style={theme.home.greeting}>{getGreeting()}, John! 👋</Text>
-          <Text style={theme.home.date}>{formatDate()}</Text>
-        </View>
-        <TouchableOpacity
-          style={theme.home.notificationButton}
-          onPress={() => navigation.navigate("Notifications")}
-        >
-          <Text style={theme.home.notificationIcon}>🔔</Text>
-          <View style={theme.home.notificationBadge}>
-            <Text style={theme.home.badgeText}>3</Text>
-          </View>
-        </TouchableOpacity>
+      <View>
+        <Text style={theme.home.greeting}>{getGreeting()}!</Text>
+        <Text style={theme.home.date}>{formatDate()}</Text>
       </View>
+      <TouchableOpacity style={theme.home.profileButton}>
+        <Text style={theme.home.profileInitial}>U</Text>
+      </TouchableOpacity>
     </View>
   );
 
-  // Quick Stats Component
   const QuickStats = () => (
     <View style={theme.home.statsContainer}>
       <Text style={theme.home.sectionTitle}>Today's Progress</Text>
+
       <View style={theme.home.statsGrid}>
-        {/* Steps */}
-        <TouchableOpacity
-          style={theme.home.statCard}
-          onPress={() => navigation.navigate("Activity")}
-        >
-          <Text style={theme.home.statIcon}>👟</Text>
-          <Text style={theme.home.statValue}>
+        {/* Steps Card */}
+        <View style={[theme.home.statCard, { backgroundColor: "#E3F2FD" }]}>
+          <Text style={theme.home.statNumber}>
             {healthData.steps.toLocaleString()}
           </Text>
           <Text style={theme.home.statLabel}>Steps</Text>
@@ -158,22 +533,43 @@ const HomeScreen = ({ route, navigation }) => {
                     healthData.steps,
                     healthData.stepsGoal
                   )}%`,
+                  backgroundColor: "#2196F3",
                 },
               ]}
             />
           </View>
-          <Text style={theme.home.statGoal}>
+          <Text style={theme.home.goalText}>
             Goal: {healthData.stepsGoal.toLocaleString()}
           </Text>
-        </TouchableOpacity>
 
-        {/* Calories */}
-        <TouchableOpacity
-          style={theme.home.statCard}
-          onPress={() => navigation.navigate("Nutrition")}
-        >
-          <Text style={theme.home.statIcon}>🔥</Text>
-          <Text style={theme.home.statValue}>{healthData.calories}</Text>
+          {/* Status indicators */}
+          {!isPedometerAvailable && (
+            <Text style={theme.home.demoText}>Manual Entry Only</Text>
+          )}
+          {isPedometerAvailable && Platform.OS === "android" && (
+            <Text style={theme.home.demoText}>
+              Live Tracking{" "}
+              {androidSessionSteps > 0 ? `(+${androidSessionSteps})` : ""}
+            </Text>
+          )}
+          {isPedometerAvailable && Platform.OS === "ios" && (
+            <Text style={theme.home.demoText}>HealthKit Connected</Text>
+          )}
+
+          {/* Manual Add Button */}
+          {Platform.OS === "android" || !isPedometerAvailable ? (
+            <TouchableOpacity
+              style={theme.home.addStepsButton}
+              onPress={() => addManualSteps(1000)}
+            >
+              <Text style={theme.home.addStepsText}>+1000 Steps</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* Calories Card */}
+        <View style={[theme.home.statCard, { backgroundColor: "#FFF3E0" }]}>
+          <Text style={theme.home.statNumber}>{healthData.calories}</Text>
           <Text style={theme.home.statLabel}>Calories</Text>
           <View style={theme.home.progressBar}>
             <View
@@ -184,23 +580,21 @@ const HomeScreen = ({ route, navigation }) => {
                     healthData.calories,
                     healthData.caloriesGoal
                   )}%`,
+                  backgroundColor: "#FF9800",
                 },
               ]}
             />
           </View>
-          <Text style={theme.home.statGoal}>
+          <Text style={theme.home.goalText}>
             Goal: {healthData.caloriesGoal}
           </Text>
-        </TouchableOpacity>
+          <Text style={theme.home.demoText}>From Steps</Text>
+        </View>
 
-        {/* Water */}
-        <TouchableOpacity
-          style={theme.home.statCard}
-          onPress={() => navigation.navigate("Hydration")}
-        >
-          <Text style={theme.home.statIcon}>💧</Text>
-          <Text style={theme.home.statValue}>{healthData.water}</Text>
-          <Text style={theme.home.statLabel}>Glasses</Text>
+        {/* Water Card */}
+        <View style={[theme.home.statCard, { backgroundColor: "#E8F5E8" }]}>
+          <Text style={theme.home.statNumber}>{healthData.water}</Text>
+          <Text style={theme.home.statLabel}>Water (glasses)</Text>
           <View style={theme.home.progressBar}>
             <View
               style={[
@@ -210,20 +604,28 @@ const HomeScreen = ({ route, navigation }) => {
                     healthData.water,
                     healthData.waterGoal
                   )}%`,
+                  backgroundColor: "#4CAF50",
                 },
               ]}
             />
           </View>
-          <Text style={theme.home.statGoal}>Goal: {healthData.waterGoal}</Text>
-        </TouchableOpacity>
+          <Text style={theme.home.goalText}>Goal: {healthData.waterGoal}</Text>
+          <TouchableOpacity
+            style={theme.home.addButton}
+            onPress={() => {
+              setHealthData((prev) => ({
+                ...prev,
+                water: Math.min(prev.water + 1, prev.waterGoal),
+              }));
+            }}
+          >
+            <Text style={theme.home.addButtonText}>+1 Glass</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Sleep */}
-        <TouchableOpacity
-          style={theme.home.statCard}
-          onPress={() => navigation.navigate("Sleep")}
-        >
-          <Text style={theme.home.statIcon}>😴</Text>
-          <Text style={theme.home.statValue}>{healthData.sleep}h</Text>
+        {/* Sleep Card */}
+        <View style={[theme.home.statCard, { backgroundColor: "#F3E5F5" }]}>
+          <Text style={theme.home.statNumber}>{healthData.sleep}h</Text>
           <Text style={theme.home.statLabel}>Sleep</Text>
           <View style={theme.home.progressBar}>
             <View
@@ -234,71 +636,46 @@ const HomeScreen = ({ route, navigation }) => {
                     healthData.sleep,
                     healthData.sleepGoal
                   )}%`,
+                  backgroundColor: "#9C27B0",
                 },
               ]}
             />
           </View>
-          <Text style={theme.home.statGoal}>Goal: {healthData.sleepGoal}h</Text>
-        </TouchableOpacity>
+          <Text style={theme.home.goalText}>Goal: {healthData.sleepGoal}h</Text>
+          <Text style={theme.home.demoText}>Log Tonight</Text>
+        </View>
       </View>
     </View>
   );
 
-  // Today's Tasks Component
   const TodaysTasks = () => (
     <View style={theme.home.tasksContainer}>
-      <View style={theme.home.sectionHeader}>
-        <Text style={theme.home.sectionTitle}>Today's Tasks</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Tasks")}>
-          <Text style={theme.home.seeAllText}>See All</Text>
+      <Text style={theme.home.sectionTitle}>Today's Tasks</Text>
+      <View style={theme.home.tasksList}>
+        <TouchableOpacity style={theme.home.taskItem}>
+          <View style={theme.home.taskCheckbox} />
+          <Text style={theme.home.taskText}>Morning workout (30 min)</Text>
         </TouchableOpacity>
-      </View>
-
-      {todayTasks.slice(0, 3).map((task) => (
-        <TouchableOpacity
-          key={task.id}
-          style={[
-            theme.home.taskItem,
-            task.completed && theme.home.completedTask,
-          ]}
-          onPress={() => toggleTask(task.id)}
-        >
-          <View style={theme.home.taskLeft}>
-            <View
-              style={[
-                theme.home.taskCheckbox,
-                task.completed && theme.home.completedCheckbox,
-              ]}
-            >
-              {task.completed && <Text style={theme.home.checkmark}>✓</Text>}
-            </View>
-            <View style={theme.home.taskContent}>
-              <Text
-                style={[
-                  theme.home.taskTitle,
-                  task.completed && theme.home.completedTaskTitle,
-                ]}
-              >
-                {task.title}
-              </Text>
-              <Text style={theme.home.taskTime}>{task.time}</Text>
-            </View>
-          </View>
-          <Text style={theme.home.taskIcon}>
-            {task.type === "workout"
-              ? "💪"
-              : task.type === "meal"
-              ? "🍽️"
-              : task.type === "water"
-              ? "💧"
-              : "📝"}
+        <TouchableOpacity style={theme.home.taskItem}>
+          <View style={[theme.home.taskCheckbox, theme.home.taskCompleted]} />
+          <Text style={[theme.home.taskText, theme.home.taskCompletedText]}>
+            Drink 2L water
           </Text>
         </TouchableOpacity>
-      ))}
+        <TouchableOpacity style={theme.home.taskItem}>
+          <View style={theme.home.taskCheckbox} />
+          <Text style={theme.home.taskText}>Take vitamins</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={theme.home.taskItem}>
+          <View style={theme.home.taskCheckbox} />
+          <Text style={theme.home.taskText}>
+            Walk {healthData.stepsGoal.toLocaleString()} steps
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
-  // Quick Actions Component
   const QuickActions = () => (
     <View style={theme.home.actionsContainer}>
       <Text style={theme.home.sectionTitle}>Quick Actions</Text>
@@ -307,77 +684,50 @@ const HomeScreen = ({ route, navigation }) => {
           style={theme.home.actionButton}
           onPress={() => navigation.navigate("Workout")}
         >
-          <Text style={theme.home.actionIcon}>🏋️‍♂️</Text>
+          <Text style={theme.home.actionIcon}>🏃</Text>
           <Text style={theme.home.actionText}>Start Workout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={theme.home.actionButton}
+          onPress={() => {
+            setHealthData((prev) => ({
+              ...prev,
+              water: Math.min(prev.water + 1, prev.waterGoal),
+            }));
+          }}
+        >
+          <Text style={theme.home.actionIcon}>💧</Text>
+          <Text style={theme.home.actionText}>Log Water</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={theme.home.actionButton}
           onPress={() => navigation.navigate("Nutrition")}
         >
-          <Text style={theme.home.actionIcon}>📝</Text>
+          <Text style={theme.home.actionIcon}>🍎</Text>
           <Text style={theme.home.actionText}>Log Meal</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={theme.home.actionButton}
-          onPress={() => navigation.navigate("Hydration")}
+          onPress={() => {
+            if (Platform.OS === "android" || !isPedometerAvailable) {
+              addManualSteps(500);
+            } else {
+              Alert.alert("Sleep Timer", "Sleep tracking coming soon!");
+            }
+          }}
         >
-          <Text style={theme.home.actionIcon}>💧</Text>
-          <Text style={theme.home.actionText}>Add Water</Text>
+          <Text style={theme.home.actionIcon}>
+            {Platform.OS === "android" || !isPedometerAvailable ? "👟" : "😴"}
+          </Text>
+          <Text style={theme.home.actionText}>
+            {Platform.OS === "android" || !isPedometerAvailable
+              ? "Add Steps"
+              : "Sleep Timer"}
+          </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={theme.home.actionButton}
-          onPress={() => navigation.navigate("Reports")}
-        >
-          <Text style={theme.home.actionIcon}>📊</Text>
-          <Text style={theme.home.actionText}>View Reports</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  // Weekly Summary Component
-  const WeeklySummary = () => (
-    <View style={theme.home.summaryContainer}>
-      <View style={theme.home.sectionHeader}>
-        <Text style={theme.home.sectionTitle}>This Week</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Reports")}>
-          <Text style={theme.home.seeAllText}>View Details</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={theme.home.summaryCard}>
-        <View style={theme.home.summaryItem}>
-          <Text style={theme.home.summaryIcon}>💪</Text>
-          <View style={theme.home.summaryContent}>
-            <Text style={theme.home.summaryValue}>
-              {healthData.workoutsThisWeek}/{healthData.workoutGoal}
-            </Text>
-            <Text style={theme.home.summaryLabel}>Workouts</Text>
-          </View>
-        </View>
-
-        <View style={theme.home.summaryDivider} />
-
-        <View style={theme.home.summaryItem}>
-          <Text style={theme.home.summaryIcon}>🎯</Text>
-          <View style={theme.home.summaryContent}>
-            <Text style={theme.home.summaryValue}>5/7</Text>
-            <Text style={theme.home.summaryLabel}>Goals Met</Text>
-          </View>
-        </View>
-
-        <View style={theme.home.summaryDivider} />
-
-        <View style={theme.home.summaryItem}>
-          <Text style={theme.home.summaryIcon}>📈</Text>
-          <View style={theme.home.summaryContent}>
-            <Text style={theme.home.summaryValue}>+12%</Text>
-            <Text style={theme.home.summaryLabel}>Improvement</Text>
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -388,14 +738,17 @@ const HomeScreen = ({ route, navigation }) => {
         style={theme.home.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+          />
         }
       >
         <Header />
         <QuickStats />
         <TodaysTasks />
         <QuickActions />
-        <WeeklySummary />
         <View style={theme.home.bottomSpacing} />
       </ScrollView>
 

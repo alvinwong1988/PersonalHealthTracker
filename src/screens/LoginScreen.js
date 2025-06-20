@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18n-js";
 import { theme } from "../styles/theme";
@@ -12,6 +19,17 @@ const LoginScreen = ({ route, navigation }) => {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Configure Google Sign-In for Expo
+  // useEffect(() => {
+  //   GoogleSignin.configure({
+  //     webClientId: "YOUR_WEB_CLIENT_ID_FROM_FIREBASE", // From Firebase Console
+  //     offlineAccess: true,
+  //     hostedDomain: "",
+  //     forceCodeForRefreshToken: true,
+  //   });
+  // }, []);
 
   const handleUsernamePasswordLogin = async () => {
     if (username && password) {

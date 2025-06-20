@@ -31,23 +31,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initI18n = () => {
-      if (i18n) {
-        i18n.translations = { en, cn };
-        i18n.fallbacks = true;
-        i18n.defaultLocale = "en";
-
-        console.log("i18n initialized successfully");
-        setI18nReady(true);
-      } else {
-        console.error("i18n-js is not loaded properly.");
-        setI18nReady(false);
-      }
-    };
-    initI18n();
-  }, []);
-
-  useEffect(() => {
     const loadLanguageAndLoginStatus = async () => {
       try {
         const savedLanguage = await AsyncStorage.getItem("selectedLanguage");

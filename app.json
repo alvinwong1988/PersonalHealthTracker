@@ -13,8 +13,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants."
-      }
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
+        "NSMotionUsageDescription": "This app uses motion data to track your daily steps and calculate calories burned."
+      },
+      "bundleIdentifier": "com.alvinwong.PersonalHealthTracker"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,10 +24,14 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "INTERNET"
-      ]
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.alvinwong.PersonalHealthTracker"
     },
     "plugins": [
       [
@@ -56,6 +62,11 @@
         }
       ],
       "expo-maps"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "556afed1-984f-46f2-a38e-dfbb3bb6ee4a"
+      }
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
   Switch,
   Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
 
@@ -24,15 +25,37 @@ const ProfileScreen = ({ navigation }) => {
     memberSince: "January 2024",
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
-        onPress: () => {
-          // Add your logout logic here
-          navigation.navigate("Login");
+        onPress: async () => {
+          try {
+            // Clear user authentication data
+            await AsyncStorage.multiRemove([
+              "userToken",
+              "userData",
+              "refreshToken",
+              "userPreferences",
+            ]);
+
+            // Reset any global state if using Context/Redux
+            // dispatch(resetUserState());
+
+            // Navigate to Login
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert(
+              "Error",
+              "Failed to logout properly. Please try again."
+            );
+          }
         },
       },
     ]);
