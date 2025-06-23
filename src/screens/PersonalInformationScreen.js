@@ -16,7 +16,7 @@ import Constants from "expo-constants";
 const API_URL = Constants.expoConfig.extra.API_URL;
 
 const PersonalInformationScreen = ({ navigation }) => {
-  // State for form data, initialized with empty values until API fetch
+  // Existing state declarations (formData, userToken, isEditing, etc.)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -29,22 +29,19 @@ const PersonalInformationScreen = ({ navigation }) => {
     profileImage: "",
   });
 
-  const [userToken, setUserToken] = useState(""); // Added state for userToken as a string
+  const [userToken, setUserToken] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [originalData, setOriginalData] = useState({});
 
-  // Fetch profile data and token on component mount
+  // Existing useEffect for fetching profile data (unchanged)
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setIsLoading(true);
-        // Retrieve user token from AsyncStorage and set it in state
         const token = await AsyncStorage.getItem("userToken");
-        setUserToken(token || ""); // Store token in state, default to empty string if null
-        //console.log(token);
-        // Replace with your actual API endpoint and authentication method
+        setUserToken(token || "");
         const response = await fetch(`${API_URL}/api/profile/profile`, {
           method: "GET",
           headers: {
@@ -56,10 +53,7 @@ const PersonalInformationScreen = ({ navigation }) => {
         if (!response.ok) {
           throw new Error("Failed to fetch profile data");
         }
-        //console.log("Profile data fetched successfully");
-        //console.log("Response:", response);
         const data = await response.json();
-        // Map the API response to formData structure (nested under profile)
         const profileData = {
           firstName: data.profile?.firstName || "",
           lastName: data.profile?.lastName || "",
@@ -85,7 +79,7 @@ const PersonalInformationScreen = ({ navigation }) => {
     fetchProfileData();
   }, []);
 
-  // Handle input changes
+  // Handle input changes (same as before, but will be called on blur now)
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -94,7 +88,7 @@ const PersonalInformationScreen = ({ navigation }) => {
     setHasChanges(true);
   };
 
-  // Save changes
+  // Existing handleSave and handleCancel functions (unchanged)
   const handleSave = () => {
     Alert.alert(
       "Save Changes",
@@ -105,7 +99,6 @@ const PersonalInformationScreen = ({ navigation }) => {
           text: "Save",
           onPress: async () => {
             try {
-              // Prepare data for API call, mapping back to Firestore structure (nested under profile)
               const saveData = {
                 profile: {
                   firstName: formData.firstName,
@@ -120,14 +113,13 @@ const PersonalInformationScreen = ({ navigation }) => {
                 },
               };
 
-              // Call saveProfile API with token from state
               const response = await fetch(
                 `${API_URL}/api/profile/saveProfile`,
                 {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${userToken}`, // Use token from state
+                    Authorization: `Bearer ${userToken}`,
                   },
                   body: JSON.stringify(saveData),
                 }
@@ -154,7 +146,6 @@ const PersonalInformationScreen = ({ navigation }) => {
     );
   };
 
-  // Cancel editing
   const handleCancel = () => {
     if (hasChanges) {
       Alert.alert(
@@ -168,7 +159,7 @@ const PersonalInformationScreen = ({ navigation }) => {
             onPress: () => {
               setIsEditing(false);
               setHasChanges(false);
-              setFormData(originalData); // Reset to original fetched data
+              setFormData(originalData);
             },
           },
         ]
@@ -178,7 +169,7 @@ const PersonalInformationScreen = ({ navigation }) => {
     }
   };
 
-  // Form field component for regular text input
+  // Updated FormField component to use local state and call handleInputChange onBlur
   const FormField = ({
     label,
     value,
@@ -186,31 +177,48 @@ const PersonalInformationScreen = ({ navigation }) => {
     placeholder,
     keyboardType = "default",
     multiline = false,
-  }) => (
-    <View style={theme.personalInfo.fieldContainer}>
-      <Text style={theme.personalInfo.fieldLabel}>{label}</Text>
-      {isEditing ? (
-        <TextInput
-          style={[
-            theme.personalInfo.input,
-            multiline && theme.personalInfo.multilineInput,
-          ]}
-          value={value}
-          onChangeText={(text) => handleInputChange(field, text)}
-          placeholder={placeholder}
-          keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={multiline ? 3 : 1}
-        />
-      ) : (
-        <Text style={theme.personalInfo.fieldValue}>
-          {value || "Not provided"}
-        </Text>
-      )}
-    </View>
-  );
+  }) => {
+    const [localValue, setLocalValue] = useState(value);
 
-  // Custom Radio Button Component for Gender
+    // Sync local state with global formData value when it changes (e.g., on load or reset)
+    useEffect(() => {
+      setLocalValue(value);
+    }, [value]);
+
+    // Call handleInputChange when focus moves away (onBlur)
+    const handleBlur = () => {
+      if (localValue !== value) {
+        handleInputChange(field, localValue);
+      }
+    };
+
+    return (
+      <View style={theme.personalInfo.fieldContainer}>
+        <Text style={theme.personalInfo.fieldLabel}>{label}</Text>
+        {isEditing ? (
+          <TextInput
+            style={[
+              theme.personalInfo.input,
+              multiline && theme.personalInfo.multilineInput,
+            ]}
+            value={localValue}
+            onChangeText={(text) => setLocalValue(text)} // Update local state during typing
+            onBlur={handleBlur} // Update global state when focus moves away
+            placeholder={placeholder}
+            keyboardType={keyboardType}
+            multiline={multiline}
+            numberOfLines={multiline ? 3 : 1}
+          />
+        ) : (
+          <Text style={theme.personalInfo.fieldValue}>
+            {value || "Not provided"}
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  // Existing GenderRadioButtons component (unchanged)
   const GenderRadioButtons = ({ label, value, field }) => (
     <View style={theme.personalInfo.fieldContainer}>
       <Text style={theme.personalInfo.fieldLabel}>{label}</Text>
@@ -311,6 +319,7 @@ const PersonalInformationScreen = ({ navigation }) => {
       <ScrollView
         style={theme.personalInfo.scrollContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="always" // Added to prevent keyboard dismissal on tap
       >
         {/* Profile Picture Section */}
         <View style={theme.personalInfo.profileSection}>
