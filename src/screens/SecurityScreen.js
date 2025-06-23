@@ -25,6 +25,7 @@ const SecurityScreen = ({ navigation }) => {
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [loginAlertsEnabled, setLoginAlertsEnabled] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Ad
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -97,6 +98,12 @@ const SecurityScreen = ({ navigation }) => {
     </View>
   );
 
+  // Call handleInputChange when focus moves away (onBlur)
+  const handleBlur = () => {
+    if (localValue !== value) {
+      handleInputChange(field, localValue);
+    }
+  };
   // Password Change Modal
   const PasswordModal = () => (
     <Modal
@@ -104,14 +111,24 @@ const SecurityScreen = ({ navigation }) => {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={theme.security.modalContainer}>
+      <SafeAreaView style={theme.security.modalcontainer}>
         <View style={theme.security.modalHeader}>
           <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
             <Text style={theme.security.modalCancel}>Cancel</Text>
           </TouchableOpacity>
           <Text style={theme.security.modalTitle}>Change Password</Text>
-          <TouchableOpacity onPress={handlePasswordChange}>
-            <Text style={theme.security.modalSave}>Save</Text>
+          <TouchableOpacity
+            onPress={handlePasswordChange}
+            disabled={isLoading} // Disable Save button during loading
+          >
+            <Text
+              style={[
+                theme.security.modalSave,
+                isLoading && { opacity: 0.5 }, // Visual feedback for disabled state
+              ]}
+            >
+              {isLoading ? "Saving..." : "Save"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -126,6 +143,7 @@ const SecurityScreen = ({ navigation }) => {
               }
               placeholder="Enter current password"
               secureTextEntry
+              editable={!isLoading} // Disable input during loading
             />
           </View>
 
@@ -139,6 +157,7 @@ const SecurityScreen = ({ navigation }) => {
               }
               placeholder="Enter new password"
               secureTextEntry
+              editable={!isLoading} // Disable input during loading
             />
           </View>
 
@@ -152,6 +171,7 @@ const SecurityScreen = ({ navigation }) => {
               }
               placeholder="Confirm new password"
               secureTextEntry
+              editable={!isLoading} // Disable input during loading
             />
           </View>
 
