@@ -220,6 +220,9 @@ const ProfileScreen = ({ navigation }) => {
         style: "destructive",
         onPress: async () => {
           try {
+            const biometricEnabled = await AsyncStorage.getItem(
+              "biometricEnabled"
+            );
             // Clear user authentication data
             await AsyncStorage.multiRemove([
               "userToken",
@@ -227,6 +230,11 @@ const ProfileScreen = ({ navigation }) => {
               "refreshToken",
               "userPreferences",
             ]);
+            // Do NOT clear biometric credentials in SecureStore if biometric login is enabled
+            if (biometricEnabled !== "true") {
+              // Only clear biometric credentials if biometric login is disabled
+              await SecureStore.deleteItemAsync("biometricCredentials");
+            }
             // Navigate to Login
             navigation.reset({
               index: 0,

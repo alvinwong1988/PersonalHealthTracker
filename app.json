@@ -20,7 +20,10 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
         "NSMotionUsageDescription": "This app uses motion data to track your daily steps and calculate calories burned.",
-        "UIBackgroundModes": ["remote-notification"]
+        "NSFaceIDUsageDescription": "This app uses Face ID for secure login and authentication.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "bundleIdentifier": "com.alvinwong.PersonalHealthTracker"
     },
@@ -37,7 +40,9 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "package": "com.alvinwong.PersonalHealthTracker"
     },
@@ -69,7 +74,9 @@
           "photosPermission": "The app accesses your photos to analyze food nutrition."
         }
       ],
-      "expo-maps"
+      "expo-maps",
+      "expo-local-authentication",
+      "expo-secure-store"
     ],
     "extra": {
       "API_URL": "http://192.168.3.7:3000",

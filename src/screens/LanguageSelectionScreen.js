@@ -6,12 +6,25 @@ import { theme } from "../styles/theme";
 const LanguageSelectionScreen = ({ navigation }) => {
   const [language, setLanguage] = useState("en");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userToken, setUserToken] = useState("");
+  const [userData, setUserData] = useState("");
 
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const loginToken = await AsyncStorage.getItem("userToken");
-        setIsLoggedIn(!!loginToken);
+        const token = await AsyncStorage.getItem("userToken");
+        setUserToken(token || "");
+        const userDataString = await AsyncStorage.getItem("userData");
+        if (userDataString) {
+          // Parse the string to JSON object
+          setUserData(JSON.parse(userDataString));
+          console.log("User Data:", !!JSON.parse(userDataString).language);
+          if (!!JSON.parse(userDataString).language) {
+            setLanguage(userDataString.language);
+            navigation.replace("Home", { language: language });
+          }
+        }
+        setIsLoggedIn(!!token);
       } catch (error) {
         console.error("Error checking login status:", error);
         setIsLoggedIn(false);

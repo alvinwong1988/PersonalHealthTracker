@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as LocalAuthentication from "expo-local-authentication";
+import * as SecureStore from "expo-secure-store";
 import i18n from "i18n-js";
 import { theme } from "../styles/theme";
 import Constants from "expo-constants";
@@ -23,6 +25,15 @@ const LoginScreen = ({ route, navigation }) => {
   const [email, setEmail] = useState(""); // Changed from username to email for compatibility
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+
+  // Check for biometric support on component mount
+  useEffect(() => {
+    (async () => {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      setIsBiometricSupported(compatible);
+    })();
+  }, []);
 
   const handleUsernamePasswordLogin = async () => {
     if (!email || !password) {
@@ -53,6 +64,22 @@ const LoginScreen = ({ route, navigation }) => {
         await AsyncStorage.setItem("userToken", data.token);
         await AsyncStorage.setItem("userId", data.userId);
         await AsyncStorage.setItem("userData", JSON.stringify(data.user));
+        await AsyncStorage.setItem(
+          "appLanguage",
+          JSON.stringify(data.user).language || language
+        );
+        // Check if biometric login is enabled
+        const biometricEnabled = await AsyncStorage.getItem("biometricEnabled");
+        if (biometricEnabled === "true") {
+          // Securely store credentials for biometric login
+          await SecureStore.setItemAsync(
+            "biometricCredentials",
+            JSON.stringify({ email, password, token: data.token }),
+            {
+              keychainAccessible: SecureStore.ALWAYS_THIS_DEVICE_ONLY,
+            }
+          );
+        }
         navigation.replace("Home", { language, user: data.user });
       } else {
         // Handle error from backend (e.g., invalid credentials)
@@ -102,6 +129,90 @@ const LoginScreen = ({ route, navigation }) => {
           ? i18n.t("dummyLoginFailed")
           : "Dummy login failed. Please try again."
       );
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      // Check if biometric data is enrolled
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!enrolled) {
+        Alert.alert(
+          i18n && i18n.t ? i18n.t("error") : "Error",
+          i18n && i18n.t
+            ? i18n.t("noBiometricData")
+            : "No biometric data enrolled. Please set up biometric authentication in your device settings."
+        );
+        return;
+      }
+
+      // Prompt for biometric authentication
+      setLoading(true);
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage:
+          i18n && i18n.t
+            ? i18n.t("authenticateToLogin")
+            : "Authenticate to log in",
+        fallbackLabel: i18n && i18n.t ? i18n.t("usePasscode") : "Use Passcode",
+      });
+
+      if (result.success) {
+        // For simplicity, using a mock token or stored credentials
+        // In production, you might want to fetch a token from your backend
+        const credentialsStr = await SecureStore.getItemAsync(
+          "biometricCredentials"
+        );
+        if (!credentialsStr) {
+          Alert.alert(
+            "Error",
+            "No stored credentials found. Please login manually.",
+            [{ text: "OK", onPress: () => {} }]
+          );
+          return;
+        }
+        const credentials = JSON.parse(credentialsStr);
+        const { email, password, token } = credentials;
+        // Store the token and user data
+        // Call the Express backend /login API directly
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+        console.log(data);
+        if (response.ok) {
+          // Success: Store token and user data, then navigate to Home
+          await AsyncStorage.setItem("userToken", data.token);
+          await AsyncStorage.setItem("userId", data.userId);
+          await AsyncStorage.setItem("userData", JSON.stringify(data.user));
+          await AsyncStorage.setItem(
+            "appLanguage",
+            JSON.stringify(data.user).language || language
+          );
+          navigation.replace("Home", { language, user: data.user });
+        } else {
+          Alert.alert(
+            i18n && i18n.t ? i18n.t("error") : "Error",
+            i18n && i18n.t
+              ? i18n.t("biometricAuthFailed")
+              : "Biometric authentication failed. Please try again."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Biometric authentication error:", error);
+      Alert.alert(
+        i18n && i18n.t ? i18n.t("error") : "Error",
+        i18n && i18n.t
+          ? i18n.t("biometricAuthError")
+          : "An error occurred during biometric authentication."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -161,6 +272,25 @@ const LoginScreen = ({ route, navigation }) => {
             : "Login"}
         </Text>
       </TouchableOpacity>
+
+      {/* Biometric Login Button */}
+      {isBiometricSupported && (
+        <TouchableOpacity
+          style={[
+            theme.components.button,
+            { marginTop: theme.spacing.medium },
+            loading && { opacity: 0.7 },
+          ]}
+          onPress={handleBiometricLogin}
+          disabled={loading}
+        >
+          <Text style={theme.components.buttonText}>
+            {i18n && i18n.t
+              ? i18n.t("loginWithBiometrics")
+              : "Login with Biometrics"}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <Text
         style={[

@@ -17,7 +17,9 @@ import { Pedometer } from "expo-sensors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
+import Constants from "expo-constants";
 
+const API_URL = Constants.expoConfig.extra.API_URL;
 const { width } = Dimensions.get("window");
 
 const HomeScreen = ({ route, navigation }) => {
@@ -42,6 +44,8 @@ const HomeScreen = ({ route, navigation }) => {
   const [androidBaseSteps, setAndroidBaseSteps] = useState(0);
   const [androidSessionSteps, setAndroidSessionSteps] = useState(0);
   const [lastSavedSteps, setLastSavedSteps] = useState(0);
+  const [userToken, setUserToken] = useState("");
+  const [userData, setUserData] = useState({});
 
   // Use refs for subscription management
   const pedometerSubscription = useRef(null);
@@ -59,19 +63,6 @@ const HomeScreen = ({ route, navigation }) => {
     };
   }, []);
 
-  // Handle app state changes (background/foreground)
-  useEffect(() => {
-    // appStateSubscription.current = AppState.addEventListener(
-    //   "change",
-    //   handleAppStateChange
-    // );
-
-    return () => {
-      // if (appStateSubscription.current) {
-      //   appStateSubscription.current.remove();
-      // }
-    };
-  }, []);
   //androidSessionSteps, androidBaseSteps
   const initializeApp = async () => {
     try {
@@ -81,8 +72,16 @@ const HomeScreen = ({ route, navigation }) => {
       // Initialize pedometer
       await initializePedometer();
 
+      // Initial Token and User Data
+      const token = await AsyncStorage.getItem("userToken");
+      setUserToken(token || "");
+      const userDataString = await AsyncStorage.getItem("userData");
+      if (userDataString) {
+        // Parse the string to JSON object
+        setUserData(JSON.parse(userDataString));
+      }
       // Set up intervals
-      setupIntervals();
+      //setupIntervals();
     } catch (error) {
       console.error("App initialization error:", error);
     }
@@ -508,7 +507,7 @@ const HomeScreen = ({ route, navigation }) => {
         <Text style={theme.home.date}>{formatDate()}</Text>
       </View>
       <TouchableOpacity style={theme.home.profileButton}>
-        <Text style={theme.home.profileInitial}>U</Text>
+        <Text style={theme.home.profileInitial}>{userData.name}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -12,6 +12,7 @@ import {
   Modal,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as LocalAuthentication from "expo-local-authentication";
 import { theme } from "../styles/theme";
 import Constants from "expo-constants";
 
@@ -31,28 +32,98 @@ const SecurityScreen = ({ navigation }) => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [isBiometricEnrolled, setIsBiometricEnrolled] = useState(false);
 
   useEffect(() => {
-    const fetchStorgeData = async () => {
+    const loadData = async () => {
       try {
+        // Load user data and token
         const token = await AsyncStorage.getItem("userToken");
         setUserToken(token || "");
         const userDataString = await AsyncStorage.getItem("userData");
         if (userDataString) {
-          // Parse the string to JSON object
           setUserData(JSON.parse(userDataString));
         }
+
+        // Check biometric support and enrollment
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        setIsBiometricSupported(compatible);
+        if (compatible) {
+          const enrolled = await LocalAuthentication.isEnrolledAsync();
+          setIsBiometricEnrolled(enrolled);
+          // Load stored preference only if biometrics are supported and enrolled
+          if (enrolled) {
+            const storedPreference = await AsyncStorage.getItem(
+              "biometricEnabled"
+            );
+            setBiometricEnabled(storedPreference === "true");
+          } else {
+            setBiometricEnabled(false);
+          }
+        } else {
+          setBiometricEnabled(false);
+        }
       } catch (error) {
-        console.error("Error fetchStorgeData:", error);
+        console.error("Error loading data or checking biometrics:", error);
         Alert.alert(
           "Error",
-          "Failed to load fetchStorgeData: " + error.message
+          "Failed to load security settings: " + error.message
         );
       }
     };
 
-    fetchStorgeData();
+    loadData();
   }, []);
+
+  const handleBiometricToggle = async (value) => {
+    if (!isBiometricSupported) {
+      Alert.alert(
+        "Unsupported",
+        "Biometric authentication is not supported on this device."
+      );
+      return;
+    }
+
+    if (!isBiometricEnrolled) {
+      Alert.alert(
+        "Not Enrolled",
+        "No biometric data enrolled. Please set up biometric authentication in your device settings."
+      );
+      return;
+    }
+
+    try {
+      if (value) {
+        // Test biometric authentication before enabling
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Authenticate to enable biometric login",
+          fallbackLabel: "Use Passcode",
+        });
+
+        if (result.success) {
+          await AsyncStorage.setItem("biometricEnabled", "true");
+          setBiometricEnabled(true);
+          Alert.alert("Success", "Biometric login enabled.");
+        } else {
+          Alert.alert(
+            "Authentication Failed",
+            "Could not enable biometric login. Please try again."
+          );
+        }
+      } else {
+        await AsyncStorage.setItem("biometricEnabled", "false");
+        setBiometricEnabled(false);
+        Alert.alert("Success", "Biometric login disabled.");
+      }
+    } catch (error) {
+      console.error("Error handling biometric toggle:", error);
+      Alert.alert(
+        "Error",
+        "Failed to update biometric settings: " + error.message
+      );
+    }
+  };
   // Security Item Component
   const SecurityItem = ({
     icon,
@@ -403,7 +474,7 @@ const SecurityScreen = ({ navigation }) => {
             onPress={() => setShowPasswordModal(true)}
           />
 
-          <SecurityItem
+          {/* <SecurityItem
             icon="📱"
             title="Two-Factor Authentication"
             subtitle={twoFactorEnabled ? "Enabled" : "Disabled"}
@@ -417,20 +488,27 @@ const SecurityScreen = ({ navigation }) => {
                 thumbColor={twoFactorEnabled ? "#ffffff" : "#f4f3f4"}
               />
             }
-          />
+          /> */}
 
           <SecurityItem
             icon="👆"
             title="Biometric Login"
-            subtitle="Face ID / Fingerprint"
-            onPress={() => {}}
+            subtitle={
+              isBiometricSupported
+                ? isBiometricEnrolled
+                  ? "Face ID / Fingerprint"
+                  : "Not enrolled on device"
+                : "Not supported on device"
+            }
+            onPress={() => {}} // Empty since Switch handles the action
             showArrow={false}
             rightComponent={
               <Switch
                 value={biometricEnabled}
-                onValueChange={setBiometricEnabled}
+                onValueChange={handleBiometricToggle}
                 trackColor={{ false: "#767577", true: "#4CAF50" }}
                 thumbColor={biometricEnabled ? "#ffffff" : "#f4f3f4"}
+                disabled={!isBiometricSupported || !isBiometricEnrolled}
               />
             }
           />
