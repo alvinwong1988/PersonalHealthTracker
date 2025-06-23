@@ -209,14 +209,14 @@ const LoginScreen = ({ route, navigation }) => {
       </TouchableOpacity>
 
       {/* Dummy Login Button */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={theme.components.button}
         onPress={handleDummyLogin}
       >
         <Text style={theme.components.buttonText}>
           {i18n && i18n.t ? i18n.t("dummyLogin") : "Dummy Login"}
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 };

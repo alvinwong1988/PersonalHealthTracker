@@ -19,6 +19,64 @@ import * as Notifications from "expo-notifications";
 
 const API_URL = Constants.expoConfig.extra.API_URL;
 
+const getAsyncStorage = async () => {
+  try {
+    const keys = [
+      "userToken",
+      "userData",
+      "refreshToken",
+      "userPreferences",
+      "userId",
+    ];
+    let result = "AsyncStorage Debug Data:\n\n";
+    const values = await AsyncStorage.multiGet(keys);
+
+    values.forEach(([key, value]) => {
+      if (value) {
+        // Handle large data by truncating for readability in alerts
+        if (key === "userToken" || key === "refreshToken") {
+          result += `${key}: ${value.slice(0, 20)}... (truncated)\n`;
+        } else if (key === "userData" || key === "userPreferences") {
+          try {
+            const parsed = JSON.parse(value);
+            result += `${key}: ${JSON.stringify(parsed, null, 2).slice(
+              0,
+              100
+            )}... (truncated)\n`;
+          } catch (e) {
+            result += `${key}: ${value.slice(0, 50)}... (raw, truncated)\n`;
+          }
+        } else {
+          result += `${key}: ${value}\n`;
+        }
+      } else {
+        result += `${key}: (not found)\n`;
+      }
+    });
+
+    // Log to console for full details (since alerts might truncate)
+    console.log("AsyncStorage Debug Data:", values);
+
+    // Show in alert for quick view on device
+    Alert.alert("AsyncStorage Debug", result, [
+      { text: "OK", style: "cancel" },
+      {
+        text: "Copy to Clipboard",
+        onPress: async () => {
+          try {
+            await navigator.clipboard.writeText(result);
+            Alert.alert("Success", "Debug data copied to clipboard.");
+          } catch (err) {
+            Alert.alert("Error", "Failed to copy to clipboard.");
+          }
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error("Error retrieving AsyncStorage data:", error);
+    Alert.alert("Error", "Failed to retrieve AsyncStorage data.");
+  }
+};
 const ProfileScreen = ({ navigation }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
@@ -97,7 +155,7 @@ const ProfileScreen = ({ navigation }) => {
           email: parsedData.email || "No email provided",
           phone: parsedData.phoneNumber || parsedData.phone || "",
           avatar: parsedData.avatar || null,
-          memberSince: parsedData.memberSince || "N/A",
+          memberSince: parsedData.createdAt || "N/A",
         });
       } else {
         setUserData({
@@ -328,6 +386,12 @@ const ProfileScreen = ({ navigation }) => {
             title="Test Server Connection"
             subtitle={serverStatus}
             onPress={testServerConnection}
+            showArrow={false}
+          />
+          <ProfileItem
+            icon="🌐"
+            title="Get AsyncStorage"
+            onPress={getAsyncStorage}
             showArrow={false}
           />
         </View>
