@@ -1,5 +1,5 @@
 // src/screens/SecurityScreen.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,16 @@ import {
   TextInput,
   Modal,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
+import Constants from "expo-constants";
+
+const API_URL = Constants.expoConfig.extra.API_URL;
 
 const SecurityScreen = ({ navigation }) => {
   // State management
+  const [userToken, setUserToken] = useState("");
+  const [userData, setUserData] = useState("");
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [loginAlertsEnabled, setLoginAlertsEnabled] = useState(true);
@@ -25,6 +31,27 @@ const SecurityScreen = ({ navigation }) => {
     confirmPassword: "",
   });
 
+  useEffect(() => {
+    const fetchStorgeData = async () => {
+      try {
+        const token = await AsyncStorage.getItem("userToken");
+        setUserToken(token || "");
+        const userDataString = await AsyncStorage.getItem("userData");
+        if (userDataString) {
+          // Parse the string to JSON object
+          setUserData(JSON.parse(userDataString));
+        }
+      } catch (error) {
+        console.error("Error fetchStorgeData:", error);
+        Alert.alert(
+          "Error",
+          "Failed to load fetchStorgeData: " + error.message
+        );
+      }
+    };
+
+    fetchStorgeData();
+  }, []);
   // Security Item Component
   const SecurityItem = ({
     icon,
@@ -151,7 +178,7 @@ const SecurityScreen = ({ navigation }) => {
   );
 
   // Handle password change
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (
       !passwordData.currentPassword ||
       !passwordData.newPassword ||
@@ -170,21 +197,63 @@ const SecurityScreen = ({ navigation }) => {
       Alert.alert("Error", "Password must be at least 8 characters long");
       return;
     }
+    // Step 2: Check if user data and email are available
+    if (!userData || !userData.email) {
+      Alert.alert(
+        "Error",
+        "User information not available. Please log in again."
+      );
+      return;
+    }
 
-    // Add your password change logic here
-    Alert.alert("Success", "Password changed successfully", [
-      {
-        text: "OK",
-        onPress: () => {
-          setShowPasswordModal(false);
-          setPasswordData({
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-          });
+    try {
+      // Step 3: Make API call to /change-password
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
         },
-      },
-    ]);
+        body: JSON.stringify({
+          email: userData.email,
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      // Step 4: Handle successful response
+      if (response.status === 200) {
+        Alert.alert("Success", "Password changed successfully", [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowPasswordModal(false);
+              setPasswordData({
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+              });
+            },
+          },
+        ]);
+      }
+    } catch (error) {
+      // Step 5: Handle errors from API call
+      console.error(
+        "Error changing password:",
+        error.response?.data || error.message
+      );
+      const errorMessage =
+        error.response?.data?.error ||
+        "Failed to change password. Please try again.";
+      if (error.response?.status === 401) {
+        Alert.alert("Error", "Current password is incorrect");
+      } else if (error.response?.status === 404) {
+        Alert.alert("Error", "User not found. Please log in again.");
+      } else {
+        Alert.alert("Error", errorMessage);
+      }
+    }
   };
 
   // Handle 2FA toggle

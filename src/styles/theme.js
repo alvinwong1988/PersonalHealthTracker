@@ -341,6 +341,7 @@ export const theme = {
   legal: {
     container: {
       flex: 1,
+      paddingTop: 20,
       backgroundColor: "#ffffff",
     },
     header: {
@@ -425,6 +426,7 @@ export const theme = {
   personalInfo: {
     container: {
       flex: 1,
+      paddingTop: 20,
       backgroundColor: "#f8f9fa",
     },
     header: {
@@ -605,6 +607,7 @@ export const theme = {
   security: {
     container: {
       flex: 1,
+      paddingTop: 20,
       backgroundColor: "#f8f9fa",
     },
     header: {
@@ -728,8 +731,9 @@ export const theme = {
       height: 50,
     },
     // Modal styles
-    modalContainer: {
+    modalcontainer: {
       flex: 1,
+      paddingTop: 20,
       backgroundColor: "#ffffff",
     },
     modalHeader: {
@@ -1413,8 +1417,9 @@ export const theme = {
       textAlign: "center",
     },
     // Modal styles
-    modalContainer: {
+    modalcontainer: {
       flex: 1,
+      paddingTop: 20,
       backgroundColor: "#ffffff",
     },
     modalHeader: {
