@@ -9,12 +9,18 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "userInterfaceStyle": "light",
+    "usesIcloudStorage": false,
+    "notification": {
+      "iosDisplayInForeground": true
+    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
-        "NSMotionUsageDescription": "This app uses motion data to track your daily steps and calculate calories burned."
+        "NSMotionUsageDescription": "This app uses motion data to track your daily steps and calculate calories burned.",
+        "UIBackgroundModes": ["remote-notification"]
       },
       "bundleIdentifier": "com.alvinwong.PersonalHealthTracker"
     },
@@ -29,7 +35,9 @@
         "android.permission.INTERNET",
         "android.permission.ACTIVITY_RECOGNITION",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
       ],
       "package": "com.alvinwong.PersonalHealthTracker"
     },
@@ -64,6 +72,7 @@
       "expo-maps"
     ],
     "extra": {
+      "API_URL": "http://192.168.3.7:3000",
       "eas": {
         "projectId": "556afed1-984f-46f2-a38e-dfbb3bb6ee4a"
       }

@@ -10,6 +10,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18n-js";
 import { theme } from "../styles/theme";
+import Constants from "expo-constants";
+
+const API_URL = Constants.expoConfig.extra.API_URL;
 
 const LoginScreen = ({ route, navigation }) => {
   const { language } = route.params || { language: "en" };
@@ -17,51 +20,88 @@ const LoginScreen = ({ route, navigation }) => {
     i18n.locale = language;
   }
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); // Changed from username to email for compatibility
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Configure Google Sign-In for Expo
-  // useEffect(() => {
-  //   GoogleSignin.configure({
-  //     webClientId: "YOUR_WEB_CLIENT_ID_FROM_FIREBASE", // From Firebase Console
-  //     offlineAccess: true,
-  //     hostedDomain: "",
-  //     forceCodeForRefreshToken: true,
-  //   });
-  // }, []);
-
   const handleUsernamePasswordLogin = async () => {
-    if (username && password) {
-      try {
-        await AsyncStorage.setItem("userToken", "mock_token");
-        navigation.replace("Home", { language });
-      } catch (error) {
-        console.error("Error storing login token:", error);
-        alert("Login failed. Please try again.");
+    if (!email || !password) {
+      Alert.alert(
+        i18n && i18n.t ? i18n.t("error") : "Error",
+        i18n && i18n.t
+          ? i18n.t("emailAndPasswordRequired")
+          : "Please enter email and password."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Call the Express backend /login API directly
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+      console.log(data);
+      if (response.ok) {
+        // Success: Store token and user data, then navigate to Home
+        await AsyncStorage.setItem("userToken", data.token);
+        await AsyncStorage.setItem("userId", data.userId);
+        await AsyncStorage.setItem("userData", JSON.stringify(data.user));
+        navigation.replace("Home", { language, user: data.user });
+      } else {
+        // Handle error from backend (e.g., invalid credentials)
+        Alert.alert(
+          i18n && i18n.t ? i18n.t("loginFailed") : "Login Failed",
+          data.error ||
+            (i18n && i18n.t
+              ? i18n.t("invalidCredentials")
+              : "Invalid email or password.")
+        );
       }
-    } else {
-      alert("Please enter username and password.");
+    } catch (error) {
+      console.error("Login error:", error);
+      Alert.alert(
+        i18n && i18n.t ? i18n.t("loginFailed") : "Login Failed",
+        i18n && i18n.t
+          ? i18n.t("networkError")
+          : "Network error. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    alert("Google Sign-In is not yet implemented. Coming soon!");
+    Alert.alert(
+      i18n && i18n.t ? i18n.t("comingSoon") : "Coming Soon",
+      i18n && i18n.t
+        ? i18n.t("googleSignInNotImplemented")
+        : "Google Sign-In is not yet implemented. Coming soon!"
+    );
     AsyncStorage.setItem("userToken", "mock_google_token").then(() => {
       navigation.replace("Home", { language });
     });
   };
 
-  // Dummy login function to navigate to HomeScreen
   const handleDummyLogin = async () => {
     try {
-      // Simulate saving a user token (dummy login)
       await AsyncStorage.setItem("userToken", "dummy-token");
       console.log("Dummy login successful, navigating to Home");
-      // Navigate to HomeScreen with a language parameter if needed
-      //navigation.replace("Home", { language: "en" });
+      navigation.replace("Home", { language });
     } catch (error) {
       console.error("Error during dummy login:", error);
+      Alert.alert(
+        i18n && i18n.t ? i18n.t("error") : "Error",
+        i18n && i18n.t
+          ? i18n.t("dummyLoginFailed")
+          : "Dummy login failed. Please try again."
+      );
     }
   };
 
@@ -75,17 +115,19 @@ const LoginScreen = ({ route, navigation }) => {
         {i18n && i18n.t ? i18n.t("login") : "Login"}
       </Text>
 
-      {/* Username and Password Login */}
+      {/* Email and Password Login */}
       <Text
         style={[theme.typography.body, { marginBottom: theme.spacing.small }]}
       >
-        {i18n && i18n.t ? i18n.t("username") : "Username"}
+        {i18n && i18n.t ? i18n.t("email") : "Email"}
       </Text>
       <TextInput
         style={theme.components.input}
-        value={username}
-        onChangeText={setUsername}
-        placeholder="Enter username"
+        value={email}
+        onChangeText={setEmail}
+        placeholder={i18n && i18n.t ? i18n.t("enterEmail") : "Enter email"}
+        keyboardType="email-address"
+        autoCapitalize="none"
       />
 
       <Text
@@ -97,17 +139,26 @@ const LoginScreen = ({ route, navigation }) => {
         style={theme.components.input}
         value={password}
         onChangeText={setPassword}
-        placeholder="Enter password"
+        placeholder={
+          i18n && i18n.t ? i18n.t("enterPassword") : "Enter password"
+        }
         secureTextEntry
       />
 
       {/* Login Button */}
       <TouchableOpacity
-        style={theme.components.button}
+        style={[theme.components.button, loading && { opacity: 0.7 }]}
         onPress={handleUsernamePasswordLogin}
+        disabled={loading}
       >
         <Text style={theme.components.buttonText}>
-          {i18n && i18n.t ? i18n.t("login") : "Login"}
+          {loading
+            ? i18n && i18n.t
+              ? i18n.t("loggingIn")
+              : "Logging in..."
+            : i18n && i18n.t
+            ? i18n.t("login")
+            : "Login"}
         </Text>
       </TouchableOpacity>
 
@@ -156,13 +207,14 @@ const LoginScreen = ({ route, navigation }) => {
             : "Don't have an account? Register"}
         </Text>
       </TouchableOpacity>
+
       {/* Dummy Login Button */}
       <TouchableOpacity
         style={theme.components.button}
         onPress={handleDummyLogin}
       >
         <Text style={theme.components.buttonText}>
-          {i18n && i18n.t ? i18n.t("Dummy login") : "Dummy Login"}
+          {i18n && i18n.t ? i18n.t("dummyLogin") : "Dummy Login"}
         </Text>
       </TouchableOpacity>
     </View>

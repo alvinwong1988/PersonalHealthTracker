@@ -1,5 +1,4 @@
-// src/screens/NotificationScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,7 +9,17 @@ import {
   RefreshControl,
   Switch,
 } from "react-native";
+import * as Notifications from "expo-notifications";
 import { theme } from "../styles/theme";
+
+// Set up notification handler for foreground notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const NotificationScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
@@ -25,7 +34,11 @@ const NotificationScreen = ({ navigation }) => {
     weeklyReports: true,
   });
 
-  // Mock notification data
+  // Reference to store notification listener subscription
+  const notificationListener = useRef();
+  const responseListener = useRef();
+
+  // Mock notification data (for UI testing)
   const mockNotifications = [
     {
       id: 1,
@@ -37,6 +50,7 @@ const NotificationScreen = ({ navigation }) => {
       priority: "high",
       action: "Start Workout",
     },
+    // ... (keeping the rest of mock data as is for brevity)
     {
       id: 2,
       type: "meal",
@@ -101,10 +115,107 @@ const NotificationScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadNotifications();
+    setupNotifications();
   }, []);
 
+  useEffect(() => {
+    // Clean up listeners on component unmount
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
+
+  const setupNotifications = async () => {
+    try {
+      // Check and request notification permissions
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Notification permissions are required to receive alerts. Please enable them in Settings."
+        );
+        return;
+      }
+
+      // Set up listeners for incoming notifications and responses
+      notificationListener.current =
+        Notifications.addNotificationReceivedListener((notification) => {
+          // Dynamically add received notification to the list
+          const receivedNotification = {
+            id: Date.now(), // Unique ID based on timestamp
+            type: notification.request.content.data?.type || "general",
+            title: notification.request.content.title || "New Notification",
+            message:
+              notification.request.content.body || "You have a new message.",
+            time: "Just now",
+            read: false,
+            priority: notification.request.content.data?.priority || "medium",
+            action: notification.request.content.data?.action || "",
+          };
+          setNotifications((prev) => [receivedNotification, ...prev]);
+        });
+
+      responseListener.current =
+        Notifications.addNotificationResponseReceivedListener((response) => {
+          // Handle user interaction with notification (e.g., tapping it)
+          const notificationId = response.notification.request.identifier;
+          console.log("User interacted with notification:", notificationId);
+          // Optionally navigate or mark as read based on response
+          markAsReadByIdentifier(notificationId);
+        });
+
+      // For testing: Schedule a sample local notification (optional, remove if not needed)
+      await scheduleTestNotification();
+    } catch (error) {
+      console.error("Error setting up notifications:", error);
+      Alert.alert("Error", "Failed to initialize notifications.");
+    }
+  };
+
+  const scheduleTestNotification = async () => {
+    // Schedule a test notification to fire in 5 seconds (for debugging)
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Test Notification",
+        body: "This is a test notification from PersonalHealthTracker!",
+        data: { type: "general", priority: "medium", action: "View Details" },
+      },
+      trigger: { seconds: 5 },
+    });
+  };
+
+  const markAsReadByIdentifier = (identifier) => {
+    // Attempt to mark a notification as read based on its identifier
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id.toString() === identifier
+          ? { ...notification, read: true }
+          : notification
+      )
+    );
+  };
+
   const loadNotifications = () => {
-    // Simulate API call
+    // Simulate API call with mock data
     setTimeout(() => {
       setNotifications(mockNotifications);
       setRefreshing(false);
@@ -343,12 +454,15 @@ const NotificationScreen = ({ navigation }) => {
         ) : (
           <>
             {/* Today's Notifications */}
-            {notifications.filter((n) => n.time.includes("hour")).length >
-              0 && (
+            {notifications.filter(
+              (n) => n.time.includes("hour") || n.time === "Just now"
+            ).length > 0 && (
               <>
                 <Text style={theme.notification.sectionTitle}>Today</Text>
                 {notifications
-                  .filter((n) => n.time.includes("hour"))
+                  .filter(
+                    (n) => n.time.includes("hour") || n.time === "Just now"
+                  )
                   .map((notification) => (
                     <NotificationItem
                       key={notification.id}

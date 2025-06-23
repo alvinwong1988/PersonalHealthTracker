@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,18 +11,147 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
+//import { API_URL } from "react-native-dotenv";
+//import { API_URL } from "@env";
+
+import Constants from "expo-constants";
+import * as Notifications from "expo-notifications";
+
+const API_URL = Constants.expoConfig.extra.API_URL;
 
 const ProfileScreen = ({ navigation }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [serverStatus, setServerStatus] = useState("Not Tested");
+  const [isTesting, setIsTesting] = useState(false);
+  const [userData, setUserData] = useState({
+    name: "Loading...",
+    email: "Loading...",
+    phone: "",
+    avatar: null,
+    memberSince: "Loading...",
+  });
 
-  // Mock user data - replace with actual user data from your state/context
-  const userData = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 234 567 8900",
-    avatar: null, // You can add actual image URI here
-    memberSince: "January 2024",
+  // Check notification permission on component mount
+  useEffect(() => {
+    checkNotificationPermission();
+    loadUserData();
+  }, []);
+
+  // Function to check and request notification permission
+  const checkNotificationPermission = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") {
+        setNotificationsEnabled(true);
+      } else {
+        setNotificationsEnabled(false);
+      }
+    } catch (error) {
+      console.error("Error checking notification permission:", error);
+      setNotificationsEnabled(false);
+    }
+  };
+
+  // Function to toggle notifications and request permission if needed
+  const toggleNotifications = async (value) => {
+    if (value) {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
+        if (status === "granted") {
+          setNotificationsEnabled(true);
+          // Optionally save to AsyncStorage if you want to persist the setting
+          await AsyncStorage.setItem("notificationsEnabled", "true");
+        } else {
+          Alert.alert(
+            "Permission Denied",
+            "Notification permissions were not granted. You can enable them in your device settings."
+          );
+          setNotificationsEnabled(false);
+        }
+      } catch (error) {
+        console.error("Error requesting notification permission:", error);
+        Alert.alert("Error", "Failed to request notification permissions.");
+        setNotificationsEnabled(false);
+      }
+    } else {
+      setNotificationsEnabled(false);
+      await AsyncStorage.setItem("notificationsEnabled", "false");
+    }
+  };
+
+  // Function to load user data from AsyncStorage
+  const loadUserData = async () => {
+    try {
+      const storedUserData = await AsyncStorage.getItem("userData");
+      if (storedUserData) {
+        const parsedData = JSON.parse(storedUserData);
+        setUserData({
+          name: parsedData.name || "Unknown User",
+          email: parsedData.email || "No email provided",
+          phone: parsedData.phoneNumber || parsedData.phone || "",
+          avatar: parsedData.avatar || null,
+          memberSince: parsedData.memberSince || "N/A",
+        });
+      } else {
+        setUserData({
+          name: "User Not Found",
+          email: "No data available",
+          phone: "",
+          avatar: null,
+          memberSince: "N/A",
+        });
+        Alert.alert(
+          "Data Unavailable",
+          "User data could not be loaded. Please log in again."
+        );
+      }
+    } catch (error) {
+      console.error("Error loading user data from AsyncStorage:", error);
+      setUserData({
+        name: "Error",
+        email: "Failed to load data",
+        phone: "",
+        avatar: null,
+        memberSince: "N/A",
+      });
+      Alert.alert(
+        "Error",
+        "Failed to load user data. Please try logging in again."
+      );
+    }
+  };
+
+  // Function to test server connection
+  const testServerConnection = async () => {
+    setIsTesting(true);
+    setServerStatus("Testing...");
+    try {
+      const response = await fetch(`${API_URL}/test`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 10000, // 10 seconds timeout
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setServerStatus(`Success: ${JSON.stringify(data).slice(0, 50)}...`);
+      } else {
+        setServerStatus(`Failed: Status ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Server connection error:", error);
+      setServerStatus(`Error: ${error.message}`);
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -40,10 +169,6 @@ const ProfileScreen = ({ navigation }) => {
               "refreshToken",
               "userPreferences",
             ]);
-
-            // Reset any global state if using Context/Redux
-            // dispatch(resetUserState());
-
             // Navigate to Login
             navigation.reset({
               index: 0,
@@ -147,12 +272,6 @@ const ProfileScreen = ({ navigation }) => {
             subtitle="Password"
             onPress={() => navigation.navigate("Security")}
           />
-          {/* <ProfileItem
-            icon="💳"
-            title="Payment Methods"
-            subtitle="Cards, billing"
-            onPress={() => navigation.navigate("Payment")}
-          /> */}
         </View>
 
         {/* Preferences Section */}
@@ -162,14 +281,8 @@ const ProfileScreen = ({ navigation }) => {
             icon="🔔"
             title="Push Notifications"
             value={notificationsEnabled}
-            onToggle={setNotificationsEnabled}
+            onToggle={toggleNotifications}
           />
-          {/* <SettingItem
-            icon="🌙"
-            title="Dark Mode"
-            value={darkModeEnabled}
-            onToggle={setDarkModeEnabled}
-          /> */}
           <ProfileItem
             icon="🌐"
             title="Language"
@@ -181,16 +294,8 @@ const ProfileScreen = ({ navigation }) => {
         {/* Support Section */}
         <View style={theme.profile.section}>
           <Text style={theme.profile.sectionTitle}>Support</Text>
-          <ProfileItem
-            icon="❓"
-            title="Help Center"
-            //onPress={() => navigation.navigate("Help")}
-          />
-          <ProfileItem
-            icon="📧"
-            title="Contact Us"
-            //onPress={() => navigation.navigate("Contact")}
-          />
+          <ProfileItem icon="❓" title="Help Center" />
+          <ProfileItem icon="📧" title="Contact Us" />
           <ProfileItem icon="⭐" title="Rate App" />
         </View>
 
@@ -211,6 +316,18 @@ const ProfileScreen = ({ navigation }) => {
             icon="ℹ️"
             title="App Version"
             subtitle="1.0.0"
+            showArrow={false}
+          />
+        </View>
+
+        {/* Debug Section - Server Connection Test */}
+        <View style={theme.profile.section}>
+          <Text style={theme.profile.sectionTitle}>Debug</Text>
+          <ProfileItem
+            icon="🌐"
+            title="Test Server Connection"
+            subtitle={serverStatus}
+            onPress={testServerConnection}
             showArrow={false}
           />
         </View>
