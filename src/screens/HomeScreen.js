@@ -14,12 +14,14 @@ import {
   Linking,
 } from "react-native";
 import { Pedometer } from "expo-sensors";
+import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme } from "../styles/theme";
 import Footer from "../components/Footer";
 import Constants from "expo-constants";
 
 const API_URL = Constants.expoConfig.extra.API_URL;
+const WEATHER_API_KEY = Constants.expoConfig.extra.WEATHER_API_KEY;
 const { width } = Dimensions.get("window");
 
 const HomeScreen = ({ route, navigation }) => {
@@ -46,6 +48,10 @@ const HomeScreen = ({ route, navigation }) => {
   const [lastSavedSteps, setLastSavedSteps] = useState(0);
   const [userToken, setUserToken] = useState("");
   const [userData, setUserData] = useState({});
+  const [weather, setWeather] = useState({
+    temp: null,
+    icon: "❓", // Default placeholder
+  });
 
   // Use refs for subscription management
   const pedometerSubscription = useRef(null);
@@ -56,13 +62,76 @@ const HomeScreen = ({ route, navigation }) => {
   // Initialize app
   useEffect(() => {
     initializeApp();
-
+    fetchWeatherData();
     // Cleanup function
     return () => {
       //cleanup();
     };
   }, []);
+  // Function to fetch weather data based on user's location
+  const fetchWeatherData = async () => {
+    try {
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Location permission is required to fetch weather data. Using default data.",
+          [{ text: "OK", onPress: () => setWeather({ temp: 72, icon: "☀️" }) }] // Fallback to mock data
+        );
+        return;
+      }
 
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+      });
+      const { latitude, longitude } = location.coords;
+      // Fetch weather data from OpenWeatherMap API
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}&units=metric`
+      );
+      //console.log("Fetching weather data from API:", response);
+      if (response.ok) {
+        const data = await response.json();
+        //console.log("Weather data:", data);
+        setWeather({
+          temp: Math.round(data.main.temp), // Temperature in Fahrenheit (use 'metric' for Celsius)
+          icon: getWeatherIcon(data.weather[0].main), // Map condition to icon
+        });
+      } else {
+        throw new Error("Failed to fetch weather data");
+      }
+    } catch (error) {
+      //console.error("Error fetching weather data:", error);
+      Alert.alert(
+        "Error",
+        "Could not fetch weather data. Using default values.",
+        [{ text: "OK", onPress: () => setWeather({ temp: 72, icon: "☀️" }) }]
+      );
+    }
+  };
+  const getWeatherIcon = (condition) => {
+    switch (condition.toLowerCase()) {
+      case "clear":
+        return "☀️"; // Sunny
+      case "clouds":
+        return "☁️"; // Cloudy
+      case "rain":
+        return "🌧️"; // Rain
+      case "drizzle":
+        return "🌦️"; // Light rain
+      case "thunderstorm":
+        return "⛈️"; // Thunderstorm
+      case "snow":
+        return "❄️"; // Snow
+      case "mist":
+      case "fog":
+        return "🌫️"; // Mist/Fog
+      default:
+        return "🌤️"; // Default partly cloudy
+    }
+  };
   //androidSessionSteps, androidBaseSteps
   const initializeApp = async () => {
     try {
@@ -83,7 +152,7 @@ const HomeScreen = ({ route, navigation }) => {
       // Set up intervals
       //setupIntervals();
     } catch (error) {
-      console.error("App initialization error:", error);
+      //.error("App initialization error:", error);
     }
   };
 
@@ -159,11 +228,9 @@ const HomeScreen = ({ route, navigation }) => {
         setAndroidBaseSteps(0);
         setAndroidSessionSteps(0);
         setLastSavedSteps(0);
-
-        console.log("New day detected - reset all data");
       }
     } catch (error) {
-      console.error("Error checking date:", error);
+      //console.error("Error checking date:", error);
     }
   };
 
@@ -183,7 +250,7 @@ const HomeScreen = ({ route, navigation }) => {
       // Step 1: Check current permission status
       let permissionResponse = await Pedometer.getPermissionsAsync();
       let status = permissionResponse.status;
-      console.log("Pedometer permission status:", status);
+      //console.log("Pedometer permission status:", status);
       // Step 2: Only request if not already granted
       if (status !== "granted") {
         permissionResponse = await Pedometer.requestPermissionsAsync();
@@ -227,7 +294,7 @@ const HomeScreen = ({ route, navigation }) => {
       }
       subscribeToPedometerUpdates();
     } catch (error) {
-      console.error("Pedometer initialization failed:", error);
+      //.error("Pedometer initialization failed:", error);
       Alert.alert(
         "Initialization Error",
         "Failed to initialize step counter. Please try again."
@@ -269,7 +336,7 @@ const HomeScreen = ({ route, navigation }) => {
         setLastSavedSteps(steps);
       }
     } catch (error) {
-      console.error("Error fetching iOS step count:", error);
+      //console.error("Error fetching iOS step count:", error);
       // Fallback to stored value
       await loadStoredSteps();
     }
@@ -302,7 +369,7 @@ const HomeScreen = ({ route, navigation }) => {
         await checkAndResetIfNewDay();
       }
     } catch (error) {
-      console.error("Error initializing Android step tracking:", error);
+      //console.error("Error initializing Android step tracking:", error);
     }
   };
 
@@ -325,7 +392,7 @@ const HomeScreen = ({ route, navigation }) => {
         setLastSavedSteps(steps);
       }
     } catch (error) {
-      console.error("Error loading stored steps:", error);
+      //console.error("Error loading stored steps:", error);
     }
   };
 
@@ -336,11 +403,11 @@ const HomeScreen = ({ route, navigation }) => {
         pedometerSubscription.current.remove();
       }
 
-      console.log("Subscribing to Pedometer updates...");
+      //console.log("Subscribing to Pedometer updates...");
 
       pedometerSubscription.current = Pedometer.watchStepCount(
         (result) => {
-          console.log("Step count update:", result.steps);
+          //console.log("Step count update:", result.steps);
 
           if (Platform.OS === "android") {
             handleAndroidStepUpdate(result.steps);
@@ -349,14 +416,14 @@ const HomeScreen = ({ route, navigation }) => {
           }
         },
         (error) => {
-          console.error("Pedometer error:", error);
+          //console.error("Pedometer error:", error);
           // Don't show alert for every error, just log it
         }
       );
 
-      console.log("Successfully subscribed to pedometer updates");
+      //console.log("Successfully subscribed to pedometer updates");
     } catch (error) {
-      console.error("Failed to subscribe to pedometer:", error);
+      //console.error("Failed to subscribe to pedometer:", error);
     }
   };
 
@@ -377,7 +444,7 @@ const HomeScreen = ({ route, navigation }) => {
         setLastSavedSteps(steps);
       }
     } catch (error) {
-      console.error("Error handling iOS step update:", error);
+      //console.error("Error handling iOS step update:", error);
     }
   };
 
@@ -399,7 +466,7 @@ const HomeScreen = ({ route, navigation }) => {
         await saveCurrentSteps();
       }
     } catch (error) {
-      console.error("Error handling Android step update:", error);
+      //console.error("Error handling Android step update:", error);
     }
   };
 
@@ -418,9 +485,9 @@ const HomeScreen = ({ route, navigation }) => {
         setAndroidBaseSteps(totalSteps);
         setAndroidSessionSteps(0);
 
-        console.log(`Saved ${totalSteps} steps`);
+        //console.log(`Saved ${totalSteps} steps`);
       } catch (error) {
-        console.error("Error saving steps:", error);
+        //console.error("Error saving steps:", error);
       }
     }
   };
@@ -452,7 +519,7 @@ const HomeScreen = ({ route, navigation }) => {
         `Successfully added ${additionalSteps} steps to your total!`
       );
     } catch (error) {
-      console.error("Error adding manual steps:", error);
+      //console.error("Error adding manual steps:", error);
       Alert.alert("Error", "Failed to add steps. Please try again.");
     }
   };
@@ -472,7 +539,7 @@ const HomeScreen = ({ route, navigation }) => {
         }
       }
     } catch (error) {
-      console.error("Refresh error:", error);
+      //console.error("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
@@ -505,6 +572,14 @@ const HomeScreen = ({ route, navigation }) => {
       <View>
         <Text style={theme.home.greeting}>{getGreeting()}!</Text>
         <Text style={theme.home.date}>{formatDate()}</Text>
+      </View>
+      <View style={theme.home.headerRightContainer}>
+        <View style={theme.home.weatherContainer}>
+          <Text style={theme.home.weatherIcon}>{weather.icon}</Text>
+          {weather.temp !== null && (
+            <Text style={theme.home.weatherTemp}>{weather.temp}°C</Text>
+          )}
+        </View>
       </View>
       <TouchableOpacity style={theme.home.profileButton}>
         <Text style={theme.home.profileInitial}>{userData.name}</Text>

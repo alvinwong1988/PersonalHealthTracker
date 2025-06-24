@@ -21,9 +21,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to find nearby restaurants.",
         "NSMotionUsageDescription": "This app uses motion data to track your daily steps and calculate calories burned.",
         "NSFaceIDUsageDescription": "This app uses Face ID for secure login and authentication.",
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       },
       "bundleIdentifier": "com.alvinwong.PersonalHealthTracker"
     },
@@ -80,6 +78,7 @@
     ],
     "extra": {
       "API_URL": "http://192.168.3.7:3000",
+      "WEATHER_API_KEY": "85648a7f722a6ffcf895e9989d04dd5b",
       "eas": {
         "projectId": "556afed1-984f-46f2-a38e-dfbb3bb6ee4a"
       }

@@ -1015,6 +1015,24 @@ export const theme = {
   },
   // Add this to your theme object in theme.js
   home: {
+    headerRightContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    weatherContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: 10, // Space between weather and profile button
+    },
+    weatherIcon: {
+      fontSize: 20, // Adjust size as needed
+      marginRight: 5, // Space between icon and temperature
+    },
+    weatherTemp: {
+      fontSize: 16, // Smaller than greeting for hierarchy
+      fontWeight: "500",
+      color: "#333", // Match your theme's text color
+    },
     container: {
       flex: 1,
       backgroundColor: "#f8f9fa",
@@ -1417,7 +1435,7 @@ export const theme = {
       textAlign: "center",
     },
     // Modal styles
-    modalcontainer: {
+    modalContainer: {
       flex: 1,
       paddingTop: 20,
       backgroundColor: "#ffffff",
